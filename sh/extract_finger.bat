@@ -1,0 +1,2 @@
+:: extract base64 fingerprint from aioquic project's ssl_cert.pem
+openssl x509 -pubkey -noout -in ..\cfg\ssl_cert.pem | openssl rsa -pubin -outform der | openssl dgst -sha256 -binary | openssl enc -base64
