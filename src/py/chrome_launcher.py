@@ -8,15 +8,6 @@ import uuid
 # h3gui
 import h3consts
 
-# TODO
-# argparse
-# batch translate all depth
-
-# one set per field: see how many distinct vals...
-# invariant: data, sym, MessageType, Instance, Region, MarketName, DisplayName,
-# variant: time
-# https://stackoverflow.com/questions/48899051/how-to-drop-a-specific-column-of-csv-file-while-reading-it-using-pandas
-
 
 def launch_chrome():
     # first clear the user-data-dir dirs before creating a new one...
