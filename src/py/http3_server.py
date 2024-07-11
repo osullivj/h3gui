@@ -27,6 +27,7 @@ from aioquic.quic.logger import QuicFileLogger
 from aioquic.tls import SessionTicket
 
 import imgui
+import h3utils
 
 # asyncio alternate
 # https://github.com/MagicStack/uvloop
@@ -561,19 +562,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="increase logging verbosity"
     )
-    parser.add_argument('-s', '--staticdir', help='static html dir', required=True)
+    parser.add_argument('-w', '--webdir', help='static html dir', required=True)
+    parser.add_argument('-d', '--datadir', help='depth data dir', required=True)
     args = parser.parse_args()
 
-    logging.basicConfig(
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-        level=logging.DEBUG if args.verbose else logging.INFO,
-    )
+    h3utils.init_logging('http3_server')
 
-    # import ASGI application
-    # module_str, attr_str = args.app.split(":", maxsplit=1)
-    # module = importlib.import_module(module_str)
-    # application = getattr(module, attr_str)
-    application = imgui.Imgui(args.staticdir)
+    application = imgui.Imgui(args.webdir, args.datadir)
 
     # create QUIC logger
     if args.quic_log:

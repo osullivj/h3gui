@@ -1,11 +1,14 @@
 # imgui application as imported by http3_server.py
-
-
+# std py pkgs
 import datetime
+import json
 import logging
 import os
+import os.path
 from urllib.parse import urlencode
-
+# pandas
+import pandas as pd
+# starlette ASGI
 from starlette.applications import Starlette
 from starlette.responses import PlainTextResponse, Response
 from starlette.routing import Mount, Route, WebSocketRoute
@@ -13,6 +16,9 @@ from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
+# h3gui
+import h3consts
+from depth_data import DepthData
 
 # override standard single dir plus py pkg behaviour of StaticFiles
 # https://github.com/encode/starlette/issues/625
@@ -55,7 +61,8 @@ class H3StaticFiles(StaticFiles):
 
 
 class Imgui(object):
-    def __init__(self, static_dir):
+    def __init__(self, static_dir, data_dir):
+        self.depth_data = DepthData(data_dir)
         # imgui-jswt/example is the only dir with .html
         template_dir = os.path.join(static_dir, 'example')
         self.templates = Jinja2Templates(directory=template_dir)
@@ -85,18 +92,31 @@ class Imgui(object):
         # accept connection
         message = await receive()
         assert message["type"] == "webtransport.connect"
-        await send({"type": "webtransport.accept"})
+        await send(dict(type="webtransport.accept"))
+        await send(dict(
+                type="webtransport.datagram.send",
+                data=self.depth_data.json_range().encode('utf-8')))
+
+        # inst_static_bytes = str(h3consts.RINSTRUMENTS).encode('utf-8')
+        await send(dict(
+                type="webtransport.datagram.send",
+                data=json.dumps(dict(
+                    h3type='inst_static',
+                    instruments=h3consts.RINSTRUMENTS)).encode('utf-8')))
+
+        # TODO: how do we send the data?
+        # NB this is stream?
 
         # echo back received data
         while True:
             message = await receive()
             if message["type"] == "webtransport.datagram.receive":
-                await send(
-                    {
-                        "data": message["data"],
-                        "type": "webtransport.datagram.send",
-                    }
-                )
+                h3msg = message['data']
+                if h3msg['h3type'] == 'ts_range':
+                    await send(dict(
+                        type="webtransport.datagram.send",
+                        data=dict(h3type='ts_data',
+                                  )))
             elif message["type"] == "webtransport.stream.receive":
                 await send(
                     {
