@@ -89,39 +89,28 @@ class Imgui(object):
         return self.templates.TemplateResponse("index.html", {"request": request})
 
     async def wt(self, scope: Scope, receive: Receive, send: Send) -> None:
+        # think of this func as a coroutine with lifetime matching the connection
+        # webtransport spec says "a WebTransport session is terminated when the
+        # CONNECT stream that created it is closed."
+        # https://ietf-wg-webtrans.github.io/draft-ietf-webtrans-http3/draft-ietf-webtrans-http3.html
+        # Which means that if this coro exits, the connection drops in the browser and the
+        # web_trans.closed callbacks fire in TS/JS
+        logging.info(f'wt: awaiting receive')
         # accept connection
         message = await receive()
+        logging.info(f'wt: message({str(message)})')
         assert message["type"] == "webtransport.connect"
         await send(dict(type="webtransport.accept"))
-        await send(dict(
-                type="webtransport.datagram.send",
-                data=self.depth_data.json_range().encode('utf-8')))
-
+        range_data = self.depth_data.json_range().encode('utf-8')
+        logging.info(f'wt: sending range({str(range_data)})')
+        await send(dict(type="webtransport.datagram.send", data=range_data))
         # inst_static_bytes = str(h3consts.RINSTRUMENTS).encode('utf-8')
-        await send(dict(
-                type="webtransport.datagram.send",
-                data=json.dumps(dict(
-                    h3type='inst_static',
-                    instruments=h3consts.RINSTRUMENTS)).encode('utf-8')))
+        inst_static = dict(h3type='inst_static', instruments=h3consts.RINSTRUMENTS)
+        logging.info(f'wt: sending inst_static({str(inst_static)})')
+        await send(dict(type="webtransport.datagram.send",
+                data=json.dumps(inst_static).encode('utf-8')))
 
-        # TODO: how do we send the data?
-        # NB this is stream?
-
-        # echo back received data
         while True:
             message = await receive()
             if message["type"] == "webtransport.datagram.receive":
-                h3msg = message['data']
-                if h3msg['h3type'] == 'ts_range':
-                    await send(dict(
-                        type="webtransport.datagram.send",
-                        data=dict(h3type='ts_data',
-                                  )))
-            elif message["type"] == "webtransport.stream.receive":
-                await send(
-                    {
-                        "data": message["data"],
-                        "stream": message["stream"],
-                        "type": "webtransport.stream.send",
-                    }
-                )
+                logging.info(f'wt: recv {str(message)}')

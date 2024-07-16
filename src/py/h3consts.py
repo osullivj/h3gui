@@ -10,10 +10,11 @@ B64_RSA_KEY = 'BSQJ0jkQ7wwhR7KvPZ+DSNk2XTZ/MS6xCbo9qu++VdQ='
 # https://github.com/GoogleChrome/samples/blob/gh-pages/webtransport/webtransport_server.py
 CHROME_LAUNCH_FMT = (
     '%(exe)s --user-data-dir=%(user_data_dir)s --no-proxy-server '
+    '--enable-logging --v=1 --auto-open-devtools-for-tabs '
     '--enable-quic --origin-to-force-quic-on=localhost:4433 '
     '--ignore-cerificate-errors '
     '--ignore-certificate-errors-spki-list=%(b64_rsa_key)s '
-    'https://googlechrome.github.io/samples/webtransport/client.html'
+    'https://localhost:4433'
 )
 
 CHROME_LAUNCH_DICT = dict(exe=CHROME_EXE, user_data_dir='', b64_rsa_key=B64_RSA_KEY)
