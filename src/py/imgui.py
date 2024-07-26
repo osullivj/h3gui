@@ -63,6 +63,9 @@ class H3StaticFiles(StaticFiles):
 class Imgui(object):
     def __init__(self, static_dir, data_dir):
         self.depth_data = DepthData(data_dir)
+        self.range_data = self.depth_data.json_range().encode('utf-8')
+        self.inst_static = dict(h3type='inst_static', instruments=h3consts.RINSTRUMENTS)
+        self.inst_static_data = json.dumps(self.inst_static).encode('utf-8')
         # imgui-jswt/example is the only dir with .html
         template_dir = os.path.join(static_dir, 'example')
         self.templates = Jinja2Templates(directory=template_dir)
@@ -95,22 +98,32 @@ class Imgui(object):
         # https://ietf-wg-webtrans.github.io/draft-ietf-webtrans-http3/draft-ietf-webtrans-http3.html
         # Which means that if this coro exits, the connection drops in the browser and the
         # web_trans.closed callbacks fire in TS/JS
-        logging.info(f'wt: awaiting receive')
-        # accept connection
+        # respond to initial
         message = await receive()
-        logging.info(f'wt: message({str(message)})')
         assert message["type"] == "webtransport.connect"
         await send(dict(type="webtransport.accept"))
-        range_data = self.depth_data.json_range().encode('utf-8')
-        logging.info(f'wt: sending range({str(range_data)})')
-        await send(dict(type="webtransport.datagram.send", data=range_data))
+        logging.info(f'wt: sent accept in response to {message}')
+        # range_data = self.depth_data.json_range().encode('utf-8')
+        # logging.info(f'wt: sending range({str(range_data)})')
+        # await send(dict(type="webtransport.datagram.send", data=range_data))
         # inst_static_bytes = str(h3consts.RINSTRUMENTS).encode('utf-8')
-        inst_static = dict(h3type='inst_static', instruments=h3consts.RINSTRUMENTS)
-        logging.info(f'wt: sending inst_static({str(inst_static)})')
-        await send(dict(type="webtransport.datagram.send",
-                data=json.dumps(inst_static).encode('utf-8')))
+        # inst_static = dict(h3type='inst_static', instruments=h3consts.RINSTRUMENTS)
+        # logging.info(f'wt: sending inst_static({str(inst_static)})')
+        # await send(dict(type="webtransport.datagram.send",
+        #        data=json.dumps(inst_static).encode('utf-8')))
 
         while True:
             message = await receive()
             if message["type"] == "webtransport.datagram.receive":
-                logging.info(f'wt: recv {str(message)}')
+                h3data_s = message["data"].decode()
+                logging.info(f'wt: h3data({h3data_s})')
+                if not h3data_s: continue
+                h3data = json.loads(h3data_s)
+                h3type = h3data['h3type']
+                if h3type == 'inst_static_request':
+                    logging.info(f'wt: h3type({h3type}), responding with {self.inst_static_data}')
+                    await send(dict(type="webtransport.datagram.send", data=self.inst_static_data))
+                elif h3type == 'ts_range_request':
+                    await send(dict(type="webtransport.datagram.send", data=self.range_data))
+                else:
+                    logging.error(f'wt: UNKNOWN h3type({h3type})')
