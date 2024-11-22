@@ -53,13 +53,15 @@ class APIHandlerBase(tornado.web.RequestHandler):
 class LayoutHandler(APIHandlerBase):
     def get(self):
         # Access-Control-Allow-Origin: http://siteA.com
-        self.write(json.dumps(addition_layout))
+        addition_layout_json = json.dumps(addition_layout)
+        self.write(addition_layout_json)
         self.finish()
 
 
 class CacheHandler(APIHandlerBase):
     def get(self):
-        self.write(json.dumps(addition_cache))
+        addition_cache_json = json.dumps(addition_cache)
+        self.write(addition_cache_json)
         self.finish()
 
 
