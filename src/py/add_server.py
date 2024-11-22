@@ -76,9 +76,10 @@ async def main():
     parse_command_line()
     app = tornado.web.Application(
         [
-            (r"/layout", LayoutHandler),
-            (r"/cache", CacheHandler),
-            (r'/websock', WebSockHandler),
+            # common "/api/" base route to make life easier in nginx.conf
+            (r"/api/layout", LayoutHandler),
+            (r"/api/cache", CacheHandler),
+            (r'/api/websock', WebSockHandler),
         ],
         cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
         template_path=os.path.join(SRC_ROOT_DIR, "h3gui", "html"),
