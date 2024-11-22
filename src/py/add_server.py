@@ -8,8 +8,11 @@ import uuid
 
 from tornado.options import define, options, parse_command_line
 
+# command line option definitions
 define("port", default=8090, help="run on the given port", type=int)
 define("debug", default=True, help="run in debug mode")
+define( "host", default="localhost")
+define( "node_port", default=8080)
 
 SRC_ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
@@ -40,20 +43,21 @@ addition_cache = dict(
     addition_result=None,
 )
 
-class MainHandler(tornado.web.RequestHandler):
-    def get(self):
-        self.write("<p>HomePage</p>")
-        self.finish()
-        # self.render("index.html", messages=dict())
+class APIHandlerBase(tornado.web.RequestHandler):
+    def set_default_headers(self, *args, **kwargs):
+        self.set_header("Access-Control-Allow-Origin", f"http://{options.host}:{options.node_port}")
+        # self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        # self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
 
-class LayoutHandler(tornado.web.RequestHandler):
+class LayoutHandler(APIHandlerBase):
     def get(self):
+        # Access-Control-Allow-Origin: http://siteA.com
         self.write(json.dumps(addition_layout))
         self.finish()
 
 
-class CacheHandler(tornado.web.RequestHandler):
+class CacheHandler(APIHandlerBase):
     def get(self):
         self.write(json.dumps(addition_cache))
         self.finish()
@@ -62,11 +66,14 @@ class CacheHandler(tornado.web.RequestHandler):
 class WebSockHandler(tornado.websocket.WebSocketHandler):
     clients = set()     # NB class member
 
+    def check_origin(self, origin):
+        return True
+
     def open(self):
-        self.__cls__.clients.add(self)
+        self.__class__.clients.add(self)
 
     def on_close(self):
-        self.__cls__.clients.remove(self)
+        self.__class__.clients.remove(self)
 
     def on_message(self, msg):
         logging.info(f'on_message:{msg}')
@@ -81,10 +88,10 @@ async def main():
             (r"/api/cache", CacheHandler),
             (r'/api/websock', WebSockHandler),
         ],
-        cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
-        template_path=os.path.join(SRC_ROOT_DIR, "h3gui", "html"),
-        static_path=os.path.join(SRC_ROOT_DIR, "imgui-jswt", "example"),  # common base dir
-        static_url_prefix="/",  # not '/static/' !!
+        # cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
+        # template_path=os.path.join(SRC_ROOT_DIR, "h3gui", "html"),
+        # static_path=os.path.join(SRC_ROOT_DIR, "imgui-jswt", "example"),  # common base dir
+        # static_url_prefix="/",  # not '/static/' !!
         xsrf_cookies=True,
         debug=options.debug,
     )
