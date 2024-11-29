@@ -16,31 +16,27 @@ define( "node_port", default=8080)
 
 SRC_ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
-addition_layout = dict(
-    home=dict(
-        title='add_server',
-        children=dict(
-            operand1=dict(
-                widget='InputInt',
-                # The cache location provided below is for clarity,
-                # we could have let it default to the widget name
-                cache='operand1',
-            ),
-            operand2=dict(
-                widget='InputInt',
-            ),
-            addition_result=dict(
-                widget='Label',
-
-            ),
-        )
-    )
-)
+addition_layout = [
+    dict(
+        rname='Home',
+        cspec=dict(
+            title='home_title',
+        ),
+        children=[
+            dict(rname='InputInt', cspec=dict(cname='op1', step=1)),
+            dict(rname='InputInt', cspec=dict(cname='op2', step=2)),
+            dict(rname='InputInt', cspec=dict(cname='op1+op2', flags=16384)),
+            dict(rname='Separator', cspec=dict()),
+            dict(rname='Footer', cspec=dict()),
+        ],
+    ),
+]
 
 addition_cache = dict(
+    home_title = 'WebAddition',
     operand1=2,
     operand2=3,
-    addition_result=None,
+    addition_result=5,
 )
 
 class APIHandlerBase(tornado.web.RequestHandler):
