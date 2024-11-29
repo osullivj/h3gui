@@ -25,18 +25,22 @@ addition_layout = [
         children=[
             dict(rname='InputInt', cspec=dict(cname='op1', step=1)),
             dict(rname='InputInt', cspec=dict(cname='op2', step=2)),
-            dict(rname='InputInt', cspec=dict(cname='op1+op2', flags=16384)),
+            dict(rname='InputInt', cspec=dict(cname='op1_plus_op2', flags=16384)),
             dict(rname='Separator', cspec=dict()),
             dict(rname='Footer', cspec=dict()),
         ],
     ),
 ]
 
+# TODO: cache behaviour
+# 1. Notify BE when val changes
+# 2. Consume only data eg mkt data
+
 addition_cache = dict(
     home_title = 'WebAddition',
-    operand1=2,
-    operand2=3,
-    addition_result=5,
+    op1=2,
+    op2=3,
+    op1_plus_op2=5,
 )
 
 class APIHandlerBase(tornado.web.RequestHandler):
@@ -75,6 +79,19 @@ class WebSockHandler(tornado.websocket.WebSocketHandler):
 
     def on_message(self, msg):
         logging.info(f'on_message:{msg}')
+        msg_dict = json.loads(msg)
+        if msg_dict["nd_type"] == "DataChange":
+            ckey = msg_dict["cache_key"]
+            addition_cache[ckey] = msg_dict["new_value"]
+            op1 = addition_cache["op1"]
+            op2 = addition_cache["op2"]
+            op1_plus_op2 = op1 + op2
+            msg_dict["cache_key"] = "op1_plus_op2"
+            msg_dict["old_value"] = addition_cache["op1_plus_op2"]
+            msg_dict["new_value"] = op1_plus_op2
+            addition_cache["op1_plus_op2"] = op1_plus_op2
+            self.write_message(json.dumps(msg_dict))
+
 
 
 async def main():
