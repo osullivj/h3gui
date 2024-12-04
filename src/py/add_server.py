@@ -20,7 +20,7 @@ addition_layout = [
     dict(
         rname='Home',
         cspec=dict(
-            title='home_title',
+            title='Server side addition',
         ),
         children=[
             dict(rname='InputInt', cspec=dict(cname='op1', step=1)),
