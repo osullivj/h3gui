@@ -78,7 +78,7 @@ class WebSockHandler(tornado.websocket.WebSocketHandler):
         self.__class__.clients.remove(self)
 
     def on_message(self, msg):
-        logging.info(f'on_message:{msg}')
+        logging.info(f'on_message: IN {msg}')
         msg_dict = json.loads(msg)
         if msg_dict["nd_type"] == "DataChange":
             ckey = msg_dict["cache_key"]
@@ -90,6 +90,7 @@ class WebSockHandler(tornado.websocket.WebSocketHandler):
             msg_dict["old_value"] = addition_cache["op1_plus_op2"]
             msg_dict["new_value"] = op1_plus_op2
             addition_cache["op1_plus_op2"] = op1_plus_op2
+            logging.info(f'on_message: OUT {msg_dict}')
             self.write_message(json.dumps(msg_dict))
 
 
