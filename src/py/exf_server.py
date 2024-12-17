@@ -34,6 +34,12 @@ exf_layout = [
                     table_size=(280, -1),
                 ),
             ),
+            dict(
+                rname='DatePicker',
+                cspec=dict(
+                    cname='end_date',
+                ),
+            ),
             dict(rname='Separator', cspec=dict()),
             dict(rname='Footer', cspec=dict()),
         ],
@@ -46,6 +52,7 @@ exf_layout = [
 exf_cache = dict(
     home_title = 'FGB',
     start_date = (2008,9,21),     # 3 tuple YMD
+    end_date = (2008,9,22),
 )
 
 class APIHandlerBase(tornado.web.RequestHandler):
