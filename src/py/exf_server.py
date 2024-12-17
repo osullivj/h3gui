@@ -26,7 +26,14 @@ exf_layout = [
         children=[
             # see src/imgui.ts for enum defns
             # TableFlags.ReadOnly == 1 << 14 == 16384
-            dict(rname='DatePicker', cspec=dict(cname='start_date', table_flags=0)),
+            dict(
+                rname='DatePicker',
+                cspec=dict(
+                    cname='start_date',
+                    table_flags=0,
+                    table_size=(280, -1),
+                ),
+            ),
             dict(rname='Separator', cspec=dict()),
             dict(rname='Footer', cspec=dict()),
         ],
@@ -81,13 +88,6 @@ class WebSockHandler(tornado.websocket.WebSocketHandler):
         if msg_dict["nd_type"] == "DataChange":
             ckey = msg_dict["cache_key"]
             exf_cache[ckey] = msg_dict["new_value"]
-            op1 = exf_cache["op1"]
-            op2 = exf_cache["op2"]
-            op1_plus_op2 = op1 + op2
-            msg_dict["cache_key"] = "op1_plus_op2"
-            msg_dict["old_value"] = exf_cache["op1_plus_op2"]
-            msg_dict["new_value"] = op1_plus_op2
-            exf_cache["op1_plus_op2"] = op1_plus_op2
             logging.info(f'on_message: OUT {msg_dict}')
             self.write_message(json.dumps(msg_dict))
 
