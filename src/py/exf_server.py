@@ -24,7 +24,9 @@ exf_layout = [
             title='Eurex Futures',
         ),
         children=[
-            dict(rname='DatePicker', cspec=dict(cname='start_date')),
+            # see src/imgui.ts for enum defns
+            # TableFlags.ReadOnly == 1 << 14 == 16384
+            dict(rname='DatePicker', cspec=dict(cname='start_date', table_flags=0)),
             dict(rname='Separator', cspec=dict()),
             dict(rname='Footer', cspec=dict()),
         ],

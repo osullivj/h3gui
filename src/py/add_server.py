@@ -25,6 +25,8 @@ addition_layout = [
         children=[
             dict(rname='InputInt', cspec=dict(cname='op1', step=1)),
             dict(rname='InputInt', cspec=dict(cname='op2', step=2)),
+            # see src/imgui.ts for enum defns
+            # InputTextFlags.ReadOnly == 1 << 14 == 16384
             dict(rname='InputInt', cspec=dict(cname='op1_plus_op2', flags=16384)),
             dict(rname='Separator', cspec=dict()),
             dict(rname='Footer', cspec=dict()),
