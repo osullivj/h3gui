@@ -8,3 +8,4 @@ certifi
 service-identity
 pyOpenSSL
 pylsqpack
+pyarrow

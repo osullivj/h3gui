@@ -22,6 +22,7 @@ CHROME_LAUNCH_FMT = (
 CHROME_LAUNCH_DICT = dict(exe=CHROME_EXE, user_data_dir='')
 
 ND_ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
+DATA_SRC_DIR = 'c:\\osullivj\\dat\\depth'
 
 # Data config
 INSTRUMENTS = {

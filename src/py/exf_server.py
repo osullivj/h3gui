@@ -6,16 +6,14 @@ import tornado
 import tornado.websocket
 import os.path
 import uuid
-
 from tornado.options import define, options, parse_command_line
+import nd_consts
 
 # command line option definitions
 define("port", default=8090, help="run on the given port", type=int)
 define("debug", default=True, help="run in debug mode")
 define( "host", default="localhost")
 define( "node_port", default=8080)
-
-SRC_ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
 exf_layout = [
     dict(
@@ -108,9 +106,13 @@ async def main():
             (r"/api/layout", LayoutHandler),
             (r"/api/cache", CacheHandler),
             (r'/api/websock', WebSockHandler),
+            # static routes
+            (r'/parquet/(.*)', tornado.web.StaticFileHandler, {'path': os.path.join(nd_consts.ND_ROOT_DIR, 'dat')}),
         ],
         # cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
         # template_path=os.path.join(SRC_ROOT_DIR, "h3gui", "html"),
+        # no app global static path so we can set for each static handler
+        # https://stackoverflow.com/questions/10165665/how-to-serve-static-files-from-a-different-directory-than-the-static-path
         # static_path=os.path.join(SRC_ROOT_DIR, "imgui-jswt", "example"),  # common base dir
         # static_url_prefix="/",  # not '/static/' !!
         xsrf_cookies=True,
