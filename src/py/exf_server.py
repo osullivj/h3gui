@@ -53,6 +53,11 @@ exf_cache = dict(
     end_date = (2008,9,22),
 )
 
+cfg_cache = dict(
+    duck_db = 0,
+)
+
+
 class APIHandlerBase(tornado.web.RequestHandler):
     def set_default_headers(self, *args, **kwargs):
         self.set_header("Access-Control-Allow-Origin", f"http://{options.host}:{options.node_port}")
@@ -72,6 +77,12 @@ class CacheHandler(APIHandlerBase):
     def get(self):
         exf_cache_json = json.dumps(exf_cache)
         self.write(exf_cache_json)
+        self.finish()
+
+class ConfigHandler(APIHandlerBase):
+    def get(self):
+        cfg_cache_json = json.dumps(cfg_cache)
+        self.write(cfg_cache_json)
         self.finish()
 
 
@@ -103,6 +114,7 @@ async def main():
     app = tornado.web.Application(
         [
             # common "/api/" base route to make life easier in nginx.conf
+            (r"/api/config", ConfigHandler),
             (r"/api/layout", LayoutHandler),
             (r"/api/cache", CacheHandler),
             (r'/api/websock', WebSockHandler),
