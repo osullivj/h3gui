@@ -15,6 +15,7 @@ import nd_utils
 # TODO
 # argparse
 # batch translate all depth
+# use duckDB for csv import and parquet generation
 
 # one set per field: see how many distinct vals...
 # invariant: data, sym, MessageType, Instance, Region, MarketName, DisplayName,
@@ -94,13 +95,13 @@ list_source_data_files = lambda source_dir:[fname for fname in os.listdir(source
 
 if __name__ == '__main__':
     nd_utils.init_logging('pq_writer')
-    source_files = list_source_data_files(nd_consts.DATA_SRC_DIR)
-    logging.info(f'Source CSVs found in {nd_consts.DATA_SRC_DIR}')
+    source_files = list_source_data_files(nd_consts.EXT_DATA_SRC_DIR)
+    logging.info(f'Source CSVs found in {nd_consts.EXT_DATA_SRC_DIR}')
     logging.info(f'{source_files}')
     target_dir = os.path.join(nd_consts.ND_ROOT_DIR, 'dat')
     logging.info(f'Clean CSVs and parquet will be in {target_dir}')
     for sf in source_files:
-        csv_base, csv_out_path = clean_csv(nd_consts.DATA_SRC_DIR, target_dir, sf)
+        csv_base, csv_out_path = clean_csv(nd_consts.EXT_DATA_SRC_DIR, target_dir, sf)
         logging.info(f'{csv_out_path} written')
         pq_out_path = write_parquet(csv_base, csv_out_path, target_dir)
         logging.info(f'{pq_out_path} written')

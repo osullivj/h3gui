@@ -64,6 +64,28 @@ class APIHandlerBase(tornado.web.RequestHandler):
         # self.set_header("Access-Control-Allow-Headers", "x-requested-with")
         # self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
+class ParquetHandler(tornado.web.RequestHandler):
+    def set_default_headers(self, *args, **kwargs):
+        # https://www.marginalia.nu/log/a_105_duckdb_parquet/
+        # https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
+        # self.set_header("Access-Control-Allow-Origin", f"http://{options.host}:{options.node_port}")
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header('Access-Control-Allow-Methods', ' GET, OPTIONS')
+        # do not allow ranged requests pro tem...
+        # self.set_header("Accept-Ranges", "bytes")
+
+    def get(self, pq_depth):
+        self.set_header('Content-Type', 'application/vnd.apache.parquet')
+        pq_path = os.path.join(nd_consts.ND_ROOT_DIR, 'dat', pq_depth)
+        with open(pq_path, 'rb') as pq_file:
+            self.write(pq_file.read())
+        self.finish()
+
+    def options(self, pq_depth):
+        logging.info(f'ParquetHandler.options: request headers for {pq_depth}\n{self.request.headers}')
+        self.set_status(204)
+        self.finish()
 
 class LayoutHandler(APIHandlerBase):
     def get(self):
@@ -118,8 +140,9 @@ async def main():
             (r"/api/layout", LayoutHandler),
             (r"/api/cache", CacheHandler),
             (r'/api/websock', WebSockHandler),
+            (r'/api/parquet/(.*)', ParquetHandler),
             # static routes
-            (r'/parquet/(.*)', tornado.web.StaticFileHandler, {'path': os.path.join(nd_consts.ND_ROOT_DIR, 'dat')}),
+            # (r'/api/parquet/(.*)', tornado.web.StaticFileHandler, {'path': os.path.join(nd_consts.ND_ROOT_DIR, 'dat')}),
         ],
         # cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
         # template_path=os.path.join(SRC_ROOT_DIR, "h3gui", "html"),
@@ -130,7 +153,14 @@ async def main():
         xsrf_cookies=True,
         debug=options.debug,
     )
-    app.listen(options.port)
+    https_server = tornado.httpserver.HTTPServer(app, ssl_options={
+        "certfile": r"C:\osullivj\src\h3gui\cfg\h3\ssl_cert.pem",
+        "keyfile": r"C:\osullivj\src\h3gui\cfg\h3\ssl_key.pem",
+    })
+    http_server = tornado.httpserver.HTTPServer(app)
+    https_server.listen(443)
+    # http_server.listen(options.port)
+    # app.listen(options.port)
     await asyncio.Event().wait()
 
 

@@ -2,27 +2,30 @@ import os.path
 
 # Env config
 CHROME_EXE = r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe'
+# B64_RSA_KEY was extracted from aioquic/tests/ssl_cert.pem
+B64_RSA_KEY = 'BSQJ0jkQ7wwhR7KvPZ+DSNk2XTZ/MS6xCbo9qu++VdQ='
 
 # Notes on Chrome launch flags...
 # https://peter.sh/experiments/chromium-command-line-switches/
 # https://www.chromium.org/developers/how-tos/run-chromium-with-flags/
-# https://www.chromium.org/quic/playing-with-quic/
-# https://github.com/GoogleChrome/samples/blob/gh-pages/webtransport/webtransport_server.py
 CHROME_LAUNCH_FMT = (
     '%(exe)s --user-data-dir=%(user_data_dir)s --no-proxy-server '
     # logging into user_data_dir: comment out to restore logging in devtools
     # '--enable-logging --v=1 '
     '--auto-open-devtools-for-tabs '    # to run debugger
     '--bwsi '                           # no sign in
-    # '--ignore-cerificate-errors '
-    # '--ignore-certificate-errors-spki-list=%(b64_rsa_key)s '
+    # we need both these to get Chrome to accept a self signed cert from the server
+    '--ignore-cerificate-errors '
+    '--ignore-certificate-errors-spki-list=%(b64_rsa_key)s '
     'http://localhost:8080/example/index.html'
 )
 
-CHROME_LAUNCH_DICT = dict(exe=CHROME_EXE, user_data_dir='')
+CHROME_LAUNCH_DICT = dict(exe=CHROME_EXE, user_data_dir='', b64_rsa_key=B64_RSA_KEY)
 
 ND_ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
-DATA_SRC_DIR = 'c:\\osullivj\\dat\\depth'
+# generic data dir outside this project
+EXT_DATA_SRC_DIR = 'c:\\osullivj\\dat\\depth'
+PQ_DATA_SRC_DIR = os.path.normpath(os.path.join(ND_ROOT_DIR, 'dat'))
 
 # Data config
 INSTRUMENTS = {
