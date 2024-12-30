@@ -1,22 +1,13 @@
+# std pkg
 import asyncio
 import json
 import logging
-import tornado
-import tornado.websocket
-import os.path
-import uuid
+# 3rd pty
+from tornado.options import options, parse_command_line
+# nodom
+import nd_web
 
-from tornado.options import define, options, parse_command_line
-
-# command line option definitions
-define("port", default=8090, help="run on the given port", type=int)
-define("debug", default=True, help="run in debug mode")
-define( "host", default="localhost")
-define( "node_port", default=8080)
-
-SRC_ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-
-addition_layout = [
+ADDITION_LAYOUT = [
     dict(
         rname='Home',
         cspec=dict(
@@ -34,56 +25,30 @@ addition_layout = [
     ),
 ]
 
-# TODO: cache behaviour
-# 1. Notify BE when val changes
-# 2. Consume only data eg mkt data
 
-addition_cache = dict(
+ADDITION_CACHE = dict(
     home_title = 'WebAddition',
     op1=2,
     op2=3,
     op1_plus_op2=5,
 )
 
-class APIHandlerBase(tornado.web.RequestHandler):
-    def set_default_headers(self, *args, **kwargs):
-        self.set_header("Access-Control-Allow-Origin", f"http://{options.host}:{options.node_port}")
-        # self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-        # self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+class AdditionApp(nd_web.NDAPIApp):
+    def __init__(self):
+        super().__init__()
+        self.api_response = dict(
+            layout=ADDITION_LAYOUT,
+            cache=ADDITION_CACHE,
+            config=dict()
+        )
 
+    def on_api_request(self, json_key):
+        return json.dumps(self.api_response.get(json_key))
 
-class LayoutHandler(APIHandlerBase):
-    def get(self):
-        # Access-Control-Allow-Origin: http://siteA.com
-        addition_layout_json = json.dumps(addition_layout)
-        self.write(addition_layout_json)
-        self.finish()
-
-
-class CacheHandler(APIHandlerBase):
-    def get(self):
-        addition_cache_json = json.dumps(addition_cache)
-        self.write(addition_cache_json)
-        self.finish()
-
-
-class WebSockHandler(tornado.websocket.WebSocketHandler):
-    clients = set()     # NB class member
-
-    def check_origin(self, origin):
-        return True
-
-    def open(self):
-        self.__class__.clients.add(self)
-
-    def on_close(self):
-        self.__class__.clients.remove(self)
-
-    def on_message(self, msg):
-        logging.info(f'on_message: IN {msg}')
-        msg_dict = json.loads(msg)
+    def on_ws_message(self, websock, msg_dict):
         if msg_dict["nd_type"] == "DataChange":
             ckey = msg_dict["cache_key"]
+            addition_cache = self.api_response['cache']
             addition_cache[ckey] = msg_dict["new_value"]
             op1 = addition_cache["op1"]
             op2 = addition_cache["op2"]
@@ -93,26 +58,12 @@ class WebSockHandler(tornado.websocket.WebSocketHandler):
             msg_dict["new_value"] = op1_plus_op2
             addition_cache["op1_plus_op2"] = op1_plus_op2
             logging.info(f'on_message: OUT {msg_dict}')
-            self.write_message(json.dumps(msg_dict))
-
+            websock.write_message(json.dumps(msg_dict))
 
 
 async def main():
     parse_command_line()
-    app = tornado.web.Application(
-        [
-            # common "/api/" base route to make life easier in nginx.conf
-            (r"/api/layout", LayoutHandler),
-            (r"/api/cache", CacheHandler),
-            (r'/api/websock', WebSockHandler),
-        ],
-        # cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
-        # template_path=os.path.join(SRC_ROOT_DIR, "h3gui", "html"),
-        # static_path=os.path.join(SRC_ROOT_DIR, "imgui-jswt", "example"),  # common base dir
-        # static_url_prefix="/",  # not '/static/' !!
-        xsrf_cookies=True,
-        debug=options.debug,
-    )
+    app = AdditionApp()
     app.listen(options.port)
     await asyncio.Event().wait()
 
