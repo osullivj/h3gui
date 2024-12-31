@@ -3,9 +3,11 @@ import asyncio
 import json
 import logging
 # 3rd pty
-from tornado.options import options, parse_command_line
+from tornado.options import options, parse_command_line, define
 # nodom
 import nd_web
+
+
 
 ADDITION_LAYOUT = [
     dict(
@@ -60,6 +62,8 @@ class AdditionApp(nd_web.NDAPIApp):
             logging.info(f'on_message: OUT {msg_dict}')
             websock.write_message(json.dumps(msg_dict))
 
+
+define("port", default=8090, help="run on the given port", type=int)
 
 async def main():
     parse_command_line()

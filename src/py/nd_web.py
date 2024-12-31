@@ -6,11 +6,13 @@ import tornado
 import tornado.websocket
 from tornado.options import define, options
 
-# command line option definitions
-define("port", default=8090, help="run on the given port", type=int)
+# command line option definitions: same for all tornado procs
+# individual server impls will set "port"
 define("debug", default=True, help="run in debug mode")
 define( "host", default="localhost")
 define( "node_port", default=8080)
+
+GOOD_HTTP_ORIGINS = ['https://shell.duckdb.org', 'https://sql-workbench.com']
 
 class APIHandlerBase(tornado.web.RequestHandler):
     def set_default_headers(self, *args, **kwargs):
@@ -51,7 +53,8 @@ ND_HANDLERS = [
 
 class NDAPIApp( tornado.web.Application):
     def __init__( self, extra_handlers = [], settings_dict = {}):
-        handlers = ND_HANDLERS + extra_handlers
+        # extra_handlers first so they get first crack at the match
+        handlers = extra_handlers + ND_HANDLERS
         settings = settings_dict
         tornado.web.Application.__init__( self, handlers, **settings)
 
