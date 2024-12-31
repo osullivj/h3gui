@@ -28,39 +28,62 @@ ADDITION_LAYOUT = [
 ]
 
 
-ADDITION_CACHE = dict(
+ADDITION_DATA = dict(
     home_title = 'WebAddition',
     op1=2,
     op2=3,
     op1_plus_op2=5,
 )
 
+addition_func = lambda x, y: x+y
+
+# list of functions or cache refs to eval
+# element 0 is the real func and 1...N the params
+op_change_action = ['op1_plus_op2', addition_func, 'op1', 'op2']
+# methods to fire on cache changes
+ADDITION_ACTIONS = dict(
+    op1=op_change_action,
+    op2=op_change_action,
+)
 class AdditionApp(nd_web.NDAPIApp):
     def __init__(self):
         super().__init__()
-        self.api_response = dict(
+        self.cache = dict(
             layout=ADDITION_LAYOUT,
-            cache=ADDITION_CACHE,
-            config=dict()
+            data=ADDITION_DATA,
+            config=dict(),
+            action=ADDITION_ACTIONS,
         )
 
     def on_api_request(self, json_key):
-        return json.dumps(self.api_response.get(json_key))
+        return json.dumps(self.cache.get(json_key))
+
+    def on_data_change(self, msg_dict):
+        # post the new value into data cache
+        ckey = msg_dict["cache_key"]
+        data_cache = self.cache['data']
+        data_cache[ckey] = msg_dict["new_value"]
+        # fire update actions
+        action_list = self.cache['action'][ckey].copy()
+        data_cache_target = action_list.pop(0)
+        old_val = self.cache['data'][data_cache_target]
+        primary_func = action_list.pop(0)
+        params = []
+        for action in action_list:
+            if isinstance(action, str):
+                params.append(self.cache['data'][action])
+            else:
+                params.append(action())
+        new_val = primary_func(*params)
+        self.cache['data'][data_cache_target] = new_val
+        return dict(new_value=new_val, old_value=old_val, cache_key=data_cache_target, nd_type='DataChange')
+
 
     def on_ws_message(self, websock, msg_dict):
         if msg_dict["nd_type"] == "DataChange":
-            ckey = msg_dict["cache_key"]
-            addition_cache = self.api_response['cache']
-            addition_cache[ckey] = msg_dict["new_value"]
-            op1 = addition_cache["op1"]
-            op2 = addition_cache["op2"]
-            op1_plus_op2 = op1 + op2
-            msg_dict["cache_key"] = "op1_plus_op2"
-            msg_dict["old_value"] = addition_cache["op1_plus_op2"]
-            msg_dict["new_value"] = op1_plus_op2
-            addition_cache["op1_plus_op2"] = op1_plus_op2
-            logging.info(f'on_message: OUT {msg_dict}')
-            websock.write_message(json.dumps(msg_dict))
+            response_dict = self.on_data_change(msg_dict)
+            logging.info(f'on_message: OUT {response_dict}')
+            websock.write_message(json.dumps(response_dict))
 
 
 define("port", default=8090, help="run on the given port", type=int)

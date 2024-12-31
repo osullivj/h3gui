@@ -32,22 +32,19 @@ TIME_FIELDS = ['time', 'FeedCaptureTS']
 strip_hms = lambda ts: pd.Timestamp(year=ts.year, month=ts.month, day=ts.day)
 
 
-list_source_data_files = lambda source_dir:[fname for fname in os.listdir(source_dir)
-                                                    if fnmatch.fnmatch(fname, '*.parquet')]
-
 SQL="""DROP TABLE IF EXISTS depth;
 CREATE TABLE depth AS SELECT * FROM read_parquet('*.parquet');
 """
 
 if __name__ == '__main__':
     nd_utils.init_logging('pq_loader')
-    source_files = list_source_data_files(nd_consts.PQ_DATA_SRC_DIR)
-    logging.info(f'Source PQs found in {nd_consts.PQ_DATA_SRC_DIR}')
+    source_files = nd_utils.parquet_files(nd_consts.PQ_DIR)
+    logging.info(f'Source PQs found in {nd_consts.PQ_DIR}')
     logging.info(f'{source_files}')
     target_db = os.path.join(nd_consts.ND_ROOT_DIR, 'dat', 'depth.db')
     logging.info(f'parquet will aggregate in {target_db}')
     # DuckDB connection: set cwd to be parquet dir
-    os.chdir(nd_consts.PQ_DATA_SRC_DIR)
+    os.chdir(nd_consts.PQ_DIR)
     conn = duckdb.connect(target_db, read_only=False)
     sql = SQL
     logging.info(f'DuckDB load query: {sql}')

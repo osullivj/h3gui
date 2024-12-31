@@ -25,7 +25,7 @@ CHROME_LAUNCH_DICT = dict(exe=CHROME_EXE, user_data_dir='', b64_rsa_key=B64_RSA_
 ND_ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 # generic data dir outside this project
 EXT_DATA_SRC_DIR = 'c:\\osullivj\\dat\\depth'
-PQ_DATA_SRC_DIR = os.path.normpath(os.path.join(ND_ROOT_DIR, 'dat'))
+PQ_DIR = os.path.normpath(os.path.join(ND_ROOT_DIR, 'dat'))
 
 # Data config
 INSTRUMENTS = {

@@ -90,18 +90,15 @@ def write_parquet(csv_base, csv_in_path, target_dir):
     return pq_out_path
 
 
-list_source_data_files = lambda source_dir:[fname for fname in os.listdir(source_dir)
-                                                    if fnmatch.fnmatch(fname, 'depth200809??.csv')]
-
 if __name__ == '__main__':
     nd_utils.init_logging('pq_writer')
-    source_files = list_source_data_files(nd_consts.EXT_DATA_SRC_DIR)
+    source_files = nd_utils.file_list(nd_consts.EXT_DATA_SRC_DIR, '*.csv')
     logging.info(f'Source CSVs found in {nd_consts.EXT_DATA_SRC_DIR}')
     logging.info(f'{source_files}')
-    target_dir = os.path.join(nd_consts.ND_ROOT_DIR, 'dat')
+    target_dir = os.path.join(nd_consts.PQ_DIR, 'dat')
     logging.info(f'Clean CSVs and parquet will be in {target_dir}')
     for sf in source_files:
-        csv_base, csv_out_path = clean_csv(nd_consts.EXT_DATA_SRC_DIR, target_dir, sf)
+        csv_base, csv_out_path = clean_csv(nd_consts.EXT_DATA_SRC_DIR, nd_consts.PQ_DIR, sf)
         logging.info(f'{csv_out_path} written')
-        pq_out_path = write_parquet(csv_base, csv_out_path, target_dir)
+        pq_out_path = write_parquet(csv_base, csv_out_path, nd_consts.PQ_DIR)
         logging.info(f'{pq_out_path} written')
