@@ -8,7 +8,6 @@ from tornado.options import options, parse_command_line, define
 import nd_web
 
 
-
 ADDITION_LAYOUT = [
     dict(
         rname='Home',
@@ -54,37 +53,6 @@ class AdditionApp(nd_web.NDAPIApp):
             config=dict(),
             action=ADDITION_ACTIONS,
         )
-
-    def on_api_request(self, json_key):
-        return json.dumps(self.cache.get(json_key))
-
-    def on_data_change(self, msg_dict):
-        # post the new value into data cache
-        ckey = msg_dict["cache_key"]
-        data_cache = self.cache['data']
-        data_cache[ckey] = msg_dict["new_value"]
-        # fire update actions
-        action_list = self.cache['action'][ckey].copy()
-        data_cache_target = action_list.pop(0)
-        old_val = self.cache['data'][data_cache_target]
-        primary_func = action_list.pop(0)
-        params = []
-        for action in action_list:
-            if isinstance(action, str):
-                params.append(self.cache['data'][action])
-            else:
-                params.append(action())
-        new_val = primary_func(*params)
-        self.cache['data'][data_cache_target] = new_val
-        return dict(new_value=new_val, old_value=old_val, cache_key=data_cache_target, nd_type='DataChange')
-
-
-    def on_ws_message(self, websock, msg_dict):
-        if msg_dict["nd_type"] == "DataChange":
-            response_dict = self.on_data_change(msg_dict)
-            logging.info(f'on_message: OUT {response_dict}')
-            websock.write_message(json.dumps(response_dict))
-
 
 define("port", default=8090, help="run on the given port", type=int)
 

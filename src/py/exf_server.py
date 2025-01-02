@@ -42,23 +42,25 @@ EXF_LAYOUT = [
 
 EXF_DATA = dict(
     home_title = 'FGB',
-    start_date = (2008,9,21),       # 3 tuple YMD
-    end_date = (2008,9,22),
-    parquet_scan = [],              # computed from date tups
-    dated_file_name_format = 'depth%Y%m%d.parquet',
+    start_date = (2008,9,1),       # 3 tuple YMD
+    end_date = (2008,9,1),
+    depth_pq_scan = [],             # computed from date tups
+    depth_pq_fmt = 'depth%Y%m%d.parquet',
 )
 
-parquet_scan_func = functools.partial(nd_utils.file_list, nd_consts.PQ_DIR, '*.parquet')
+# data_change_actions should be pure cache data manipulation
+# no sending of WS msgs
+parquet_list_func = functools.partial(nd_utils.file_list, nd_consts.PQ_DIR, '*.parquet')
 # list of functions or cache refs to eval
 # element 0 is the data cache destination
 # element 1 is real func and 2...N the params
 date_change_action = [
-    'parquet_scan',
+    'depth_pq_scan',
     nd_utils.date_ranged_matches,   # provides val for parquet_scan
-    parquet_scan_func,
+    parquet_list_func,
     'start_date',
     'end_date',
-    'dated_file_name_format',
+    'depth_pq_fmt',
 ]
 # methods to fire on cache changes
 EXF_ACTIONS = dict(
@@ -75,35 +77,18 @@ class DepthApp(nd_web.NDAPIApp):
             action=EXF_ACTIONS,
         )
 
-    def on_api_request(self, json_key):
-        return json.dumps(self.cache.get(json_key))
+    def on_ws_message(self, websock, mdict):
+        change_list = super().on_ws_message(websock, mdict)
+        # any data changes on this side we should know about?
+        # eg filter out DataChangedConfirmed, as those are acks to
+        # changes from the other side
+        data_changes = [c for c in change_list if c.get('nd_type')=='DataChange']
+        for dc in data_changes:
+            if dc['cache_key'] == 'depth_pq_scan':
+                depth_urls = [f'https://localhost/api/parquet/{pqfile}' for pqfile in dc['new_value']]
+                sql = f"CREATE TABLE depth as select * from parquet_scan({depth_urls})"
+                websock.write_message(dict(nd_type='ParquetScan', sql=sql))
 
-    def on_ws_message(self, websock, msg_dict):
-        if msg_dict["nd_type"] == "DataChange":
-            response_dict = self.on_data_change(msg_dict)
-            logging.info(f'on_message: OUT {response_dict}')
-            websock.write_message(json.dumps(response_dict))
-
-
-    def on_data_change(self, msg_dict):
-        # post the new value into data cache
-        ckey = msg_dict["cache_key"]
-        data_cache = self.cache['data']
-        data_cache[ckey] = msg_dict["new_value"]
-        # fire update actions
-        action_list = self.cache['action'][ckey].copy()
-        data_cache_target = action_list.pop(0)
-        old_val = self.cache['data'][data_cache_target]
-        primary_func = action_list.pop(0)
-        params = []
-        for action in action_list:
-            if isinstance(action, str):
-                params.append(self.cache['data'][action])
-            else:
-                params.append(action())
-        new_val = primary_func(*params)
-        self.cache['data'][data_cache_target] = new_val
-        return dict(new_value=new_val, old_value=old_val, cache_key=data_cache_target, nd_type='DataChange')
 
 define("port", default=8090, help="run on the given port", type=int)
 

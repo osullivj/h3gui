@@ -54,16 +54,59 @@ ND_HANDLERS = [
 class NDAPIApp( tornado.web.Application):
     def __init__( self, extra_handlers = [], settings_dict = {}):
         # extra_handlers first so they get first crack at the match
+        self.cache = dict()
         handlers = extra_handlers + ND_HANDLERS
         settings = settings_dict
         tornado.web.Application.__init__( self, handlers, **settings)
+        self.ws_handlers = dict(
+            DataChange=self.on_data_change,
+        )
 
     def on_api_request(self, json_key):
-        err = f'NDAPIApp.get_api_response not implemented json_key({json_key})'
+        return json.dumps(self.cache.get(json_key))
+
+    def ws_no_op(self, msg_dict):
+        err = f'ws_no_op: {msg_dict['nd_type']}'
         logging.error(err)
         raise Exception(err)
 
-    def on_ws_message(self, websock, msg_dict):
-        err = f'NDAPIApp.on_ws_message not implemented msg_dict({msg_dict})'
-        logging.error(err)
-        raise Exception(err)
+    def on_data_change(self, msg_dict):
+        changes = []
+        # post the new value into data cache
+        ckey = msg_dict["cache_key"]
+        data_cache = self.cache['data']
+        data_cache[ckey] = msg_dict["new_value"]
+        conf_dict = msg_dict.copy()
+        conf_dict['nd_type'] = 'DataChangeConfirmed'
+        changes.append(conf_dict)
+        # check for update actions
+        action_cache = self.cache.get('action')
+        if not action_cache:
+            return changes
+        # copy so we don't drain the orig cache copy
+        action_list = action_cache.get(ckey, []).copy()
+        if not action_list:
+            return changes
+        # fire update actions
+        data_cache_target = action_list.pop(0)
+        old_val = data_cache.get(data_cache_target)
+        primary_func = action_list.pop(0)
+        params = []
+        for action in action_list:
+            if isinstance(action, str): # not a func, a cache ref
+                params.append(data_cache.get(action))
+            else:
+                params.append(action())
+        new_val = primary_func(*params)
+        data_cache[data_cache_target] = new_val
+        changes.append(dict(new_value=new_val, old_value=old_val, cache_key=data_cache_target, nd_type='DataChange'))
+        return changes
+
+    def on_ws_message(self, websock, mdict):
+        msg_dict = mdict if isinstance(mdict, dict) else dict()
+        ws_func = self.ws_handlers.get(msg_dict.get('nd_type'), self.ws_no_op)
+        change_list = ws_func(msg_dict)
+        if change_list:
+            for change in change_list:
+                websock.write_message(change)
+        return change_list
