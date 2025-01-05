@@ -5,12 +5,19 @@ import logging
 import tornado
 import tornado.websocket
 from tornado.options import define, options
+# nodom
+import nd_utils
 
 # command line option definitions: same for all tornado procs
 # individual server impls will set "port"
 define("debug", default=True, help="run in debug mode")
 define( "host", default="localhost")
 define( "node_port", default=8080)
+# tornado logs to stderr by default; however we have nd_utils.init_logging,
+# which is unaware of the tornado log setup. We cannot set here as Tornado's
+# log.py defines, so we set on the cmd line --log-to-stderr
+
+logr = nd_utils.init_logging(__name__)
 
 GOOD_HTTP_ORIGINS = ['https://shell.duckdb.org', 'https://sql-workbench.com']
 
@@ -41,7 +48,7 @@ class WebSockHandler(tornado.websocket.WebSocketHandler):
         self.__class__.clients.remove(self)
 
     def on_message(self, msg):
-        logging.info(f'on_message: IN {msg}')
+        logr.info(f'on_message: IN {msg}')
         msg_dict = json.loads(msg)
         self.application.on_ws_message(self, msg_dict)
 
@@ -67,7 +74,7 @@ class NDAPIApp( tornado.web.Application):
 
     def ws_no_op(self, msg_dict):
         err = f'ws_no_op: {msg_dict['nd_type']}'
-        logging.error(err)
+        logr.error(err)
         raise Exception(err)
 
     def on_data_change(self, msg_dict):

@@ -86,7 +86,7 @@ class DepthApp(nd_web.NDAPIApp):
         for dc in data_changes:
             if dc['cache_key'] == 'depth_pq_scan':
                 depth_urls = [f'https://localhost/api/parquet/{pqfile}' for pqfile in dc['new_value']]
-                sql = f"CREATE TABLE depth as select * from parquet_scan({depth_urls})"
+                sql = f"DROP TABLE IF EXISTS depth; CREATE TABLE depth as select * from parquet_scan({depth_urls})"
                 websock.write_message(dict(nd_type='ParquetScan', sql=sql))
 
 
@@ -96,6 +96,7 @@ async def main():
     parse_command_line()
     app = DepthApp()
     app.listen(options.port)
+    logging.info(f'{__file__} port:{options.port}')
     await asyncio.Event().wait()
 
 
