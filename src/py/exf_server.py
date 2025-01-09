@@ -11,11 +11,17 @@ import nd_web
 import nd_utils
 import nd_consts
 
+
 EXF_LAYOUT = [
     dict(
         rname='Home',
         cspec=dict(
             title='Eurex Futures',
+            # only applicable here in the Home widget
+            gui_canvas_style_width="200px",
+            gui_canvas_style_height="100px",
+            shell_canvas_style_left="100px",
+            shell_canvas_style_top = "0px"
         ),
         children=[
             # see src/imgui.ts for enum defns
