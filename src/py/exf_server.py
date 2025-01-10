@@ -88,12 +88,13 @@ class DepthApp(nd_web.NDAPIApp):
         # any data changes on this side we should know about?
         # eg filter out DataChangedConfirmed, as those are acks to
         # changes from the other side
-        data_changes = [c for c in change_list if c.get('nd_type')=='DataChange']
-        for dc in data_changes:
-            if dc['cache_key'] == 'depth_pq_scan':
-                depth_urls = [f'https://localhost/api/parquet/{pqfile}' for pqfile in dc['new_value']]
-                sql = f"DROP TABLE IF EXISTS depth; CREATE TABLE depth as select * from parquet_scan({depth_urls})"
-                websock.write_message(dict(nd_type='ParquetScan', sql=sql))
+        if change_list:
+            data_changes = [c for c in change_list if c.get('nd_type')=='DataChange']
+            for dc in data_changes:
+                if dc['cache_key'] == 'depth_pq_scan':
+                    depth_urls = [f'https://localhost/api/parquet/{pqfile}' for pqfile in dc['new_value']]
+                    sql = f"DROP TABLE IF EXISTS depth; CREATE TABLE depth as select * from parquet_scan({depth_urls})"
+                    websock.write_message(dict(nd_type='ParquetScan', sql=sql))
 
 
 define("port", default=8090, help="run on the given port", type=int)

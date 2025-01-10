@@ -1,6 +1,6 @@
 # std pkgs
 import json
-import logging
+import uuid
 # tornado
 import tornado
 import tornado.websocket
@@ -24,9 +24,12 @@ GOOD_HTTP_ORIGINS = ['https://shell.duckdb.org', 'https://sql-workbench.com']
 class APIHandlerBase(tornado.web.RequestHandler):
     def set_default_headers(self, *args, **kwargs):
         self.set_header("Access-Control-Allow-Origin", f"http://{options.host}:{options.node_port}")
-        # self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-        # self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
+class DuckOpLogHandler(tornado.web.RequestHandler):
+    def get(self, slug):
+        response_text = self.application.on_duck_op_log_request(slug)
+        self.write(response_text)
+        self.finish()
 
 class JSONHandler(APIHandlerBase):
     def get(self, slug):
@@ -36,19 +39,18 @@ class JSONHandler(APIHandlerBase):
 
 
 class WebSockHandler(tornado.websocket.WebSocketHandler):
-    clients = set()     # NB class member
-
     def check_origin(self, origin):
         return True
 
     def open(self):
-        self.__class__.clients.add(self)
+        self._uuid = uuid.uuid4()
+        logr.info(f'WebSockHandler.open: {self._uuid}')
 
     def on_close(self):
-        self.__class__.clients.remove(self)
+        logr.info(f'WebSockHandler.on_close: {self._uuid}')
 
     def on_message(self, msg):
-        logr.info(f'on_message: IN {msg}')
+        logr.info(f'on_message: {self._uuid} IN {msg}')
         msg_dict = json.loads(msg)
         self.application.on_ws_message(self, msg_dict)
 
@@ -56,6 +58,7 @@ class WebSockHandler(tornado.websocket.WebSocketHandler):
 ND_HANDLERS = [
     (r'/api/websock', WebSockHandler),
     (r'/api/(.*)', JSONHandler),
+    (r'/ui/duckoplog/(.*)', DuckOpLogHandler),
 ]
 
 class NDAPIApp( tornado.web.Application):
@@ -67,17 +70,24 @@ class NDAPIApp( tornado.web.Application):
         tornado.web.Application.__init__( self, handlers, **settings)
         self.ws_handlers = dict(
             DataChange=self.on_data_change,
+            DuckOp=self.on_duck_op,
         )
+        # keyed on websock handler object itself
+        self.duck_op_dict = dict()
 
     def on_api_request(self, json_key):
         return json.dumps(self.cache.get(json_key))
 
-    def ws_no_op(self, msg_dict):
+    def on_duck_op_log_request(self, slug):
+        op_list = self.duck_op_dict.get(slug, [])
+        return op_list.join('\n')
+
+    def ws_no_op(self, ws, msg_dict):
         err = f'ws_no_op: {msg_dict['nd_type']}'
         logr.error(err)
         raise Exception(err)
 
-    def on_data_change(self, msg_dict):
+    def on_data_change(self, ws, msg_dict):
         changes = []
         # post the new value into data cache
         ckey = msg_dict["cache_key"]
@@ -106,13 +116,23 @@ class NDAPIApp( tornado.web.Application):
                 params.append(action())
         new_val = primary_func(*params)
         data_cache[data_cache_target] = new_val
+        # send server side data changes back to client
         changes.append(dict(new_value=new_val, old_value=old_val, cache_key=data_cache_target, nd_type='DataChange'))
         return changes
+
+    def on_duck_op(self, ws, msg_dict):
+        logr.info(f'on_duck_op: {ws._uuid} {msg_dict}')
+        op_list = self.duck_op_dict.setdefault(ws._uuid, [])
+        op_list.append(msg_dict)
+        # let the client know about the uuid for this websock
+        # so it can compose /ui/... URLs to see the duck log
+        # for diagnostics
+        return [dict(nd_type='DuckOpUUID', uuid=str(ws._uuid))]
 
     def on_ws_message(self, websock, mdict):
         msg_dict = mdict if isinstance(mdict, dict) else dict()
         ws_func = self.ws_handlers.get(msg_dict.get('nd_type'), self.ws_no_op)
-        change_list = ws_func(msg_dict)
+        change_list = ws_func(websock, msg_dict)
         if change_list:
             for change in change_list:
                 websock.write_message(change)
