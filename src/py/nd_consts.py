@@ -17,7 +17,7 @@ CHROME_LAUNCH_FMT = (
     # we need both these to get Chrome to accept a self signed cert from the server
     '--ignore-cerificate-errors '
     '--ignore-certificate-errors-spki-list=%(b64_rsa_key)s '
-    'http://localhost:8080/example/index.html'
+    'http://localhost:8090/example/index.html'
 )
 
 CHROME_LAUNCH_DICT = dict(exe=CHROME_EXE, user_data_dir='', b64_rsa_key=B64_RSA_KEY)
@@ -25,6 +25,7 @@ CHROME_LAUNCH_DICT = dict(exe=CHROME_EXE, user_data_dir='', b64_rsa_key=B64_RSA_
 ND_ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 # generic data dir outside this project
 EXT_DATA_SRC_DIR = 'c:\\osullivj\\dat\\depth'
+IMGUI_DIR = 'c:\\osullivj\\src\\imgui-jswt'
 PQ_DIR = os.path.normpath(os.path.join(ND_ROOT_DIR, 'dat'))
 
 # Data config

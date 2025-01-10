@@ -1,12 +1,16 @@
 # std pkgs
+from datetime import datetime
 import json
+import os.path
 import uuid
 # tornado
 import tornado
 import tornado.websocket
 from tornado.options import define, options
+from tornado.web import StaticFileHandler
 # nodom
 import nd_utils
+import nd_consts
 
 # command line option definitions: same for all tornado procs
 # individual server impls will set "port"
@@ -25,9 +29,10 @@ class APIHandlerBase(tornado.web.RequestHandler):
     def set_default_headers(self, *args, **kwargs):
         self.set_header("Access-Control-Allow-Origin", f"http://{options.host}:{options.node_port}")
 
-class DuckOpLogHandler(tornado.web.RequestHandler):
+class DuckJournalHandler(tornado.web.RequestHandler):
     def get(self, slug):
-        response_text = self.application.on_duck_op_log_request(slug)
+        self.set_header("Content-Type", "text/plain")
+        response_text = self.application.on_duck_journal_request(slug)
         self.write(response_text)
         self.finish()
 
@@ -43,7 +48,7 @@ class WebSockHandler(tornado.websocket.WebSocketHandler):
         return True
 
     def open(self):
-        self._uuid = uuid.uuid4()
+        self._uuid = str(uuid.uuid4())
         logr.info(f'WebSockHandler.open: {self._uuid}')
 
     def on_close(self):
@@ -58,7 +63,13 @@ class WebSockHandler(tornado.websocket.WebSocketHandler):
 ND_HANDLERS = [
     (r'/api/websock', WebSockHandler),
     (r'/api/(.*)', JSONHandler),
-    (r'/ui/duckoplog/(.*)', DuckOpLogHandler),
+    (r'/ui/duckjournal/(.*)', DuckJournalHandler),
+    (r'/imgui/misc/fonts/(.*)', StaticFileHandler, dict(path=os.path.join(nd_consts.IMGUI_DIR, 'imgui', 'misc', 'fonts'))),
+    (r'/node_modules/@flyover/system/build/(.*)', StaticFileHandler, dict(path=os.path.join(nd_consts.IMGUI_DIR, 'node_modules', '@flyover', 'system', 'build'))),
+    (r'/example/build/(.*)', StaticFileHandler, dict(path=os.path.join(nd_consts.IMGUI_DIR, 'example', 'build'))),
+    (r'/build/(.*)', StaticFileHandler, dict(path=os.path.join(nd_consts.IMGUI_DIR, 'build'))),
+    (r'/example/(.*)', StaticFileHandler, dict(path=os.path.join(nd_consts.IMGUI_DIR, 'example'))),
+    (r'/(.*)', StaticFileHandler, dict(path=nd_consts.ND_ROOT_DIR)),
 ]
 
 class NDAPIApp( tornado.web.Application):
@@ -78,9 +89,12 @@ class NDAPIApp( tornado.web.Application):
     def on_api_request(self, json_key):
         return json.dumps(self.cache.get(json_key))
 
-    def on_duck_op_log_request(self, slug):
-        op_list = self.duck_op_dict.get(slug, [])
-        return op_list.join('\n')
+    def on_duck_journal_request(self, slug):
+        logr.info(f'on_duck_journal_request: duck_op_dict:{self.duck_op_dict}')
+        journal_entries = self.duck_op_dict.get(slug, [])
+        journal_text = '\n'.join( [ j['sql'] for j in journal_entries ] )
+        logr.info(f'on_duck_journal_request: {slug} {journal_text}')
+        return journal_text
 
     def ws_no_op(self, ws, msg_dict):
         err = f'ws_no_op: {msg_dict['nd_type']}'
@@ -122,12 +136,14 @@ class NDAPIApp( tornado.web.Application):
 
     def on_duck_op(self, ws, msg_dict):
         logr.info(f'on_duck_op: {ws._uuid} {msg_dict}')
+        msg_dict['ts'] = datetime.now().isoformat()
         op_list = self.duck_op_dict.setdefault(ws._uuid, [])
         op_list.append(msg_dict)
+        logr.info(f'on_duck_op: duck_op_dict:{self.duck_op_dict}')
         # let the client know about the uuid for this websock
         # so it can compose /ui/... URLs to see the duck log
         # for diagnostics
-        return [dict(nd_type='DuckOpUUID', uuid=str(ws._uuid))]
+        return [dict(nd_type='DuckOpUUID', uuid=ws._uuid)]
 
     def on_ws_message(self, websock, mdict):
         msg_dict = mdict if isinstance(mdict, dict) else dict()
