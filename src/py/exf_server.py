@@ -93,8 +93,15 @@ class DepthApp(nd_web.NDAPIApp):
             for dc in data_changes:
                 if dc['cache_key'] == 'depth_pq_scan':
                     depth_urls = [f'https://localhost/api/parquet/{pqfile}' for pqfile in dc['new_value']]
-                    sql = f"DROP TABLE IF EXISTS depth; CREATE TABLE depth as select * from parquet_scan({depth_urls})"
-                    websock.write_message(dict(nd_type='ParquetScan', sql=sql))
+                    table = 'depth'
+                    sql = f"DROP TABLE IF EXISTS {table}; CREATE TABLE {table} as select * from parquet_scan({depth_urls})"
+                    websock.write_message(dict(nd_type='ParquetScan', sql=sql, table=f"{table}"))
+                    # that ParquetScan should create a table in DuckDB. So let's send a follow up query
+                    # to summarize the table. NB we do not dispatch directly, we schedule for next time
+                    # event loop is free to dispatch...
+                    summarize_request = dict(nd_type='Summarize', sql=f'summarize select * from {table}', table=table)
+                    io_loop = asyncio.get_event_loop()
+                    io_loop.call_soon(websock.write_message, summarize_request)
 
 
 define("port", default=8090, help="run on the given port", type=int)

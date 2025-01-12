@@ -149,6 +149,8 @@ class NDAPIApp( tornado.web.Application):
         msg_dict = mdict if isinstance(mdict, dict) else dict()
         ws_func = self.ws_handlers.get(msg_dict.get('nd_type'), self.ws_no_op)
         change_list = ws_func(websock, msg_dict)
+        # no mutations or actions on changed cache entries, just send em
+        # back up to the client...
         if change_list:
             for change in change_list:
                 websock.write_message(change)
