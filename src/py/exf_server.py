@@ -86,6 +86,7 @@ EXTRA_HANDLERS = [
 class DepthApp(nd_web.NDAPIApp):
     def __init__(self):
         super().__init__(EXTRA_HANDLERS)
+        self.is_duck_app = True
         self.cache = dict(
             layout=EXF_LAYOUT,
             data=EXF_DATA,

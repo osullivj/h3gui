@@ -54,6 +54,14 @@ class ParquetHandler(tornado.web.StaticFileHandler):
         self.set_header("Connection", "keep-alive")
 
 
+class HomeHandler(tornado.web.RequestHandler):
+    def set_default_headers(self, *args, **kwargs):
+        self.set_header("Access-Control-Allow-Origin", f"*")
+
+    def get(self):
+        self.render("index.html", duck_db=self.application.is_duck_app)
+
+
 class APIHandlerBase(tornado.web.RequestHandler):
     def set_default_headers(self, *args, **kwargs):
         self.set_header("Access-Control-Allow-Origin", f"http://{options.host}:{options.node_port}")
@@ -90,6 +98,7 @@ class WebSockHandler(tornado.websocket.WebSocketHandler):
 
 
 ND_HANDLERS = [
+    (r'/example/index.html', HomeHandler),
     (r'/api/websock', WebSockHandler),
     (r'/api/(.*)', JSONHandler),
     (r'/ui/duckjournal/(.*)', DuckJournalHandler),
@@ -102,11 +111,11 @@ ND_HANDLERS = [
 ]
 
 class NDAPIApp( tornado.web.Application):
-    def __init__( self, extra_handlers = [], settings_dict = {}):
+    def __init__( self, extra_handlers = []):
         # extra_handlers first so they get first crack at the match
         self.cache = dict()
         handlers = extra_handlers + ND_HANDLERS
-        settings = settings_dict
+        settings = dict(template_path=os.path.join(nd_consts.IMGUI_DIR, 'example'))
         tornado.web.Application.__init__( self, handlers, **settings)
         self.ws_handlers = dict(
             DataChange=self.on_data_change,
@@ -114,6 +123,7 @@ class NDAPIApp( tornado.web.Application):
         )
         # keyed on websock handler object itself
         self.duck_op_dict = dict()
+        self.is_duck_app = False
 
     def on_api_request(self, json_key):
         return json.dumps(self.cache.get(json_key))
