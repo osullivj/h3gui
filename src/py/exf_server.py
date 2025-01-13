@@ -12,6 +12,7 @@ import nd_web
 import nd_utils
 import nd_consts
 
+logr = nd_utils.init_logging(__name__)
 
 EXF_LAYOUT = [
     dict(
@@ -84,7 +85,7 @@ EXTRA_HANDLERS = [
 
 class DepthApp(nd_web.NDAPIApp):
     def __init__(self):
-        super().__init__() # EXTRA_HANDLERS)
+        super().__init__(EXTRA_HANDLERS)
         self.cache = dict(
             layout=EXF_LAYOUT,
             data=EXF_DATA,
@@ -106,9 +107,20 @@ class DepthApp(nd_web.NDAPIApp):
                     websock.write_message(dict(nd_type='ParquetScan', sql=sql, table=f"{table}"))
 
 
-define("port", default=8090, help="run on the given port", type=int)
+define("port", default=443, help="run on the given port", type=int)
 
 async def main():
+    parse_command_line()
+    cert_path = os.path.normpath(os.path.join(nd_consts.ND_ROOT_DIR, 'cfg', 'h3'))
+    app = DepthApp()
+    https_server = tornado.httpserver.HTTPServer(app, ssl_options={
+        "certfile": os.path.join(cert_path, "ssl_cert.pem"),
+        "keyfile": os.path.join(cert_path, "ssl_key.pem"),
+    })
+    https_server.listen(options.port)
+    logr.info(f'{__file__} port:{options.port} cert_path:{cert_path}')
+
+    await asyncio.Event().wait()
     parse_command_line()
     app = DepthApp()
     app.listen(options.port)

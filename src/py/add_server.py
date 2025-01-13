@@ -6,7 +6,9 @@ import logging
 from tornado.options import options, parse_command_line, define
 # nodom
 import nd_web
+import nd_utils
 
+logr = nd_utils.init_logging(__name__)
 
 ADDITION_LAYOUT = [
     dict(
