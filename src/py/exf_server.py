@@ -3,6 +3,7 @@ import asyncio
 import functools
 import json
 import logging
+import os.path
 # tornado
 import tornado.websocket
 from tornado.options import options, parse_command_line, define
@@ -74,9 +75,16 @@ EXF_ACTIONS = dict(
     end_date=date_change_action,
 )
 
+
+PQ_SCAN_SQL = 'BEGIN; DROP TABLE IF EXISTS %(table)s; CREATE TABLE %(table)s as select * from parquet_scan(%(urls)s); COMMIT;'
+
+EXTRA_HANDLERS = [
+    (r'/api/parquet/(.*)', nd_web.ParquetHandler, dict(path=os.path.join(nd_consts.ND_ROOT_DIR, 'dat')))
+]
+
 class DepthApp(nd_web.NDAPIApp):
     def __init__(self):
-        super().__init__()
+        super().__init__() # EXTRA_HANDLERS)
         self.cache = dict(
             layout=EXF_LAYOUT,
             data=EXF_DATA,
@@ -94,14 +102,8 @@ class DepthApp(nd_web.NDAPIApp):
                 if dc['cache_key'] == 'depth_pq_scan':
                     depth_urls = [f'https://localhost/api/parquet/{pqfile}' for pqfile in dc['new_value']]
                     table = 'depth'
-                    sql = f"DROP TABLE IF EXISTS {table}; CREATE TABLE {table} as select * from parquet_scan({depth_urls})"
+                    sql = PQ_SCAN_SQL % dict(table=table, urls=depth_urls)
                     websock.write_message(dict(nd_type='ParquetScan', sql=sql, table=f"{table}"))
-                    # that ParquetScan should create a table in DuckDB. So let's send a follow up query
-                    # to summarize the table. NB we do not dispatch directly, we schedule for next time
-                    # event loop is free to dispatch...
-                    summarize_request = dict(nd_type='Summarize', sql=f'summarize select * from {table}', table=table)
-                    io_loop = asyncio.get_event_loop()
-                    io_loop.call_soon(websock.write_message, summarize_request)
 
 
 define("port", default=8090, help="run on the given port", type=int)

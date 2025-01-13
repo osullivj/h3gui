@@ -17,6 +17,8 @@ CHROME_LAUNCH_FMT = (
     # we need both these to get Chrome to accept a self signed cert from the server
     '--ignore-cerificate-errors '
     '--ignore-certificate-errors-spki-list=%(b64_rsa_key)s '
+    # https://medium.com/@aleksej.gudkov/understanding-and-fixing-the-strict-origin-when-cross-origin-cors-error-340c6614f701
+    #   '--disable-web-security '
     'http://localhost:8090/example/index.html'
 )
 

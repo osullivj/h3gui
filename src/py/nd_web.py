@@ -25,6 +25,35 @@ logr = nd_utils.init_logging(__name__)
 
 GOOD_HTTP_ORIGINS = ['https://shell.duckdb.org', 'https://sql-workbench.com']
 
+CHUNK_SIZE = 2**16  # 64K chunks
+BUFFER = bytearray(CHUNK_SIZE)
+parquet_path = lambda pq_name: os.path.join(nd_consts.ND_ROOT_DIR, 'dat', pq_name)
+
+logr = nd_utils.init_logging(__name__, True)
+
+# Tornado implements HTTP ranges in StaticFileHandler
+# However, DuckDB-Wasm can only invoke HTTPS from inside
+# wasm code because of sandboxing. We also have to supply
+# CORS headers that allow the Parquet server to have a
+# diff URL from the GUI server. Hence a subclass...
+class ParquetHandler(tornado.web.StaticFileHandler):
+    def set_default_headers(self, *args, **kwargs):
+        # https://www.marginalia.nu/log/a_105_duckdb_parquet/
+        # https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
+        # https://github.com/mozilla/pdf.js/issues/8566
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "Range, Origin, X-Requested-With, Content-Type, Accept, Authorization")
+        self.set_header("Access-Control-Expose-Headers","Content-Length, Content-Encoding, Accept-Ranges, Content-Range")
+        self.set_header('Access-Control-Allow-Methods', ' GET, HEAD, OPTIONS')
+        # TODO: note cacheEpoch in DuckDBs browser_runtime.ts
+        # Does is come from this header? We'll need to think about cache
+        # eviction strategies...
+        self.set_header('Access-Control-Max-Age', '86400')
+        # accept Ranged requests for chunks
+        self.set_header("Accept-Ranges", "bytes")
+        self.set_header("Connection", "keep-alive")
+
+
 class APIHandlerBase(tornado.web.RequestHandler):
     def set_default_headers(self, *args, **kwargs):
         self.set_header("Access-Control-Allow-Origin", f"http://{options.host}:{options.node_port}")
