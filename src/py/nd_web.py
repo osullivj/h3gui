@@ -41,7 +41,7 @@ class ParquetHandler(tornado.web.StaticFileHandler):
         # https://www.marginalia.nu/log/a_105_duckdb_parquet/
         # https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
         # https://github.com/mozilla/pdf.js/issues/8566
-        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Origin", "*") # allow access by shell.duckdb.org
         self.set_header("Access-Control-Allow-Headers", "Range, Origin, X-Requested-With, Content-Type, Accept, Authorization")
         self.set_header("Access-Control-Expose-Headers","Content-Length, Content-Encoding, Accept-Ranges, Content-Range")
         self.set_header('Access-Control-Allow-Methods', ' GET, HEAD, OPTIONS')
@@ -56,6 +56,7 @@ class ParquetHandler(tornado.web.StaticFileHandler):
 
 class HomeHandler(tornado.web.RequestHandler):
     def set_default_headers(self, *args, **kwargs):
+        self.set_header("Content-Type", "text/html")
         self.set_header("Access-Control-Allow-Origin", f"*")
 
     def get(self):
@@ -64,6 +65,7 @@ class HomeHandler(tornado.web.RequestHandler):
 
 class APIHandlerBase(tornado.web.RequestHandler):
     def set_default_headers(self, *args, **kwargs):
+        self.set_header("Content-Type", "application/json")
         self.set_header("Access-Control-Allow-Origin", f"http://{options.host}:{options.node_port}")
 
 class DuckJournalHandler(tornado.web.RequestHandler):

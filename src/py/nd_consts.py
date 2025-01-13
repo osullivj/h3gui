@@ -19,7 +19,7 @@ CHROME_LAUNCH_FMT = (
     '--ignore-certificate-errors-spki-list=%(b64_rsa_key)s '
     # https://medium.com/@aleksej.gudkov/understanding-and-fixing-the-strict-origin-when-cross-origin-cors-error-340c6614f701
     #   '--disable-web-security '
-    'http://localhost:8090/example/index.html'
+    'https://localhost/example/index.html'
 )
 
 CHROME_LAUNCH_DICT = dict(exe=CHROME_EXE, user_data_dir='', b64_rsa_key=B64_RSA_KEY)
