@@ -105,7 +105,7 @@ class DepthApp(nd_web.NDAPIApp):
                     depth_urls = [f'https://localhost/api/parquet/{pqfile}' for pqfile in dc['new_value']]
                     table = 'depth'
                     sql = PQ_SCAN_SQL % dict(table=table, urls=depth_urls)
-                    websock.write_message(dict(nd_type='ParquetScan', sql=sql, table=f"{table}"))
+                    websock.write_message(dict(nd_type='ParquetScan', sql=sql, query_id=f"{table}"))
 
 
 define("port", default=443, help="run on the given port", type=int)
