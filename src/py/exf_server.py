@@ -26,6 +26,14 @@ EXF_LAYOUT = [
             shell_canvas_style_top = "0px"
         ),
         children=[
+            dict(
+                rname='Combo',
+                cspec=dict(
+                    cname='instruments',
+                    index='selected_instrument',
+                    label='Instrument',
+                ),
+            ),
             # see src/imgui.ts for enum defns
             # TableFlags.ReadOnly == 1 << 14 == 16384
             dict(
@@ -36,10 +44,22 @@ EXF_LAYOUT = [
                     table_size=(280, -1),
                 ),
             ),
+            dict(rname='SameLine'),
+            dict(rname='Text',
+                cspec=dict(
+                    text='Start date',
+                ),
+            ),
             dict(
                 rname='DatePicker',
                 cspec=dict(
                     cname='end_date',
+                ),
+            ),
+            dict(rname='SameLine'),
+            dict(rname='Text',
+                cspec=dict(
+                    text='End date',
                 ),
             ),
             dict(rname='Separator', cspec=dict()),
@@ -54,7 +74,9 @@ EXF_DATA = dict(
     end_date = (2008,9,1),
     depth_pq_scan = [],             # computed from date tups
     depth_pq_fmt = 'depth%Y%m%d.parquet',
-    instruments = ['FGBMU8', 'FGBMZ8', 'FGBXZ8', 'FGBSU8', 'FGBSZ8', 'FGBXU8', 'FGBLU8', 'FGBLZ8'],
+    # NB tuple gives us Array in TS, and list gives us Object
+    instruments = ('FGBMU8', 'FGBMZ8', 'FGBXZ8', 'FGBSU8', 'FGBSZ8', 'FGBXU8', 'FGBLU8', 'FGBLZ8'),
+    selected_instrument = 0,
 )
 
 # data_change_actions should be pure cache data manipulation
