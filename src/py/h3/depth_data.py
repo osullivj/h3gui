@@ -1,6 +1,5 @@
 # builtin
-import csv
-from datetime import time, datetime
+import fnmatch
 import json
 import logging
 import os.path
@@ -12,31 +11,53 @@ import h3utils
 
 
 class DepthData(object):
-    def __init__(self, data_dir):
-        self.dframe = self.load_data(data_dir)
+    def __init__(self, source_dir, target_dir):
+        self.source_dir = source_dir
+        self.target_dir = target_dir
 
-    def load_data(self, data_dir):
-        # TODO: replace with eg duckDB
-        data_frames = []
-        for fname in os.listdir(data_dir):
-            if fname.endswith('_pd.csv'):
-                csv_path = os.path.join(data_dir, fname)
-                data_frames.append(pd.read_csv(csv_path, usecols=h3consts.COLUMNS,
-                            parse_dates=list(h3consts.CLEAN_DATE_FORMATS.keys()),
-                                               date_format=h3consts.CLEAN_DATE_FORMATS))
-        df = pd.concat(data_frames)
-        logging.info(f'load_data: df.types\n{df.dtypes}')
-        self.start_ts = df['FeedCaptureTS'].min()
-        self.end_ts = df['FeedCaptureTS'].max()
-        logging.info(f'load_data: start:{self.start_ts}/{type(self.start_ts)}, end:{self.end_ts}')
-        return df
+    def load_data(self):
+        logging.info(f'load_data: searching {self.source_dir}')
+        for fname in os.listdir(self.source_dir):
+            df = None
+            if fnmatch.fnmatch(fname, 'depth200809[01]?_???????.csv'):
+                csv_path = os.path.join(self.source_dir, fname)
+                logging.info(f'load_data: processing {csv_path}')
+                # 1st pass parse lets pandas guess the data types
+                try:
+                    df = pd.read_csv(csv_path, usecols=h3consts.COLUMNS)
+                            # parse_dates=h3consts.DATE_FIELDS, # list(h3consts.CLEAN_DATE_FORMATS.keys()),
+                              #                  date_format=h3consts.DATE_FORMAT) # h3consts.CLEAN_DATE_FORMATS)
 
-    def json_range(self):
-        msg_dict = dict(h3type='ts_range', start_ts=self.start_ts, end_ts=self.end_ts)
-        return json.dumps(msg_dict, default=h3utils.h3_json_encoder)
+                except Exception as ex:
+                    logging.error(f'load_data: skipping {fname} {ex}')
+                    continue
+                # now fix the dates after the fact: much faster than pandas trying
+                # many possible conversions. First the simple conversions where a full
+                # ISO8601 like timestamp has been provided...
+                df['LastTradeTime'] = pd.to_datetime(df['LastTradeTime'])
+                df['TranDateTime'] = pd.to_datetime(df['TranDateTime'])
+                df['TS'] = pd.to_datetime(df['date'] + ' ' + df['time'])
+                df['CaptureTS'] = pd.to_datetime(df['date'] + ' ' + df['FeedCaptureTS'])
+                self.start_ts = df['FeedCaptureTS'].min()
+                self.end_ts = df['FeedCaptureTS'].max()
+                df = df.drop(columns=['date', 'time', 'FeedCaptureTS'])
+                # logging.info(f'load_data: {fname} df.types\n{df.dtypes}')
+                logging.info(f'load_data: ts_range {fname} start:{self.start_ts}/{type(self.start_ts)}, end:{self.end_ts}')
+                # throw away the .csv (with [0]), the depth prefix (with [5:]) and split to (date, instcode)
+                fdate, inst_code7s = os.path.splitext(fname)[0][5:].split('_')
+                # consts use last 4 digits...
+                inst_code4s = inst_code7s[3:]
+                inst_name = h3consts.INSTRUMENTS.get(int(inst_code4s))
+                if inst_name:
+                    ofname = f'{inst_name}_{fdate}.csv'
+                    opath = os.path.join(self.target_dir, ofname)
+                    logging.info(f'load_data: writing {opath}')
+                    df.to_csv(opath)
+                else:
+                    logging.info(f'load_data: skipping {inst_code4s} {fname}')
+
 
 if __name__ == '__main__':
-    h3utils.init_logging('depth_data')
-    data_dir = os.path.join(h3consts.H3ROOT_DIR, 'dat')
-    dd = DepthData(data_dir)
-    logging.info(f'depth_data: json_range({dd.json_range()})')
+    h3utils.init_logging(__file__)
+    dd = DepthData(h3consts.EXT_DATA_SRC_DIR, os.path.join(h3consts.H3ROOT_DIR, 'dat'))
+    dd.load_data()

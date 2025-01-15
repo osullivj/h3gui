@@ -21,7 +21,8 @@ CHROME_LAUNCH_FMT = (
 
 CHROME_LAUNCH_DICT = dict(exe=CHROME_EXE, user_data_dir='', b64_rsa_key=B64_RSA_KEY)
 
-H3ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
+H3ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+EXT_DATA_SRC_DIR = 'c:\\osullivj\\dat\\depth'
 
 # Data config
 INSTRUMENTS = {
@@ -36,7 +37,8 @@ INSTRUMENTS = {
 }
 RINSTRUMENTS=dict((v,k) for k,v in INSTRUMENTS.items())
 
-COLUMNS=['sym', 'SeqNo', 'FeedSequenceId', 'time', 'FeedCaptureTS',
+# cols for csvs aggregated across instruments
+AGG_COLUMNS=['sym', 'SeqNo', 'FeedSequenceId', 'time', 'FeedCaptureTS',
              'StatusCode', 'StatusText', 'Explicit',
              'TradingStatus', 'InstrumentStatus', 'LastTradeTime',
              'LastTradePrice', 'LastTradeSize', 'HighPrice',
@@ -55,6 +57,27 @@ COLUMNS=['sym', 'SeqNo', 'FeedSequenceId', 'time', 'FeedCaptureTS',
              'BidQty4', 'BidPrice4',
              'BidQty5', 'BidPrice5',
 ]
+
+COLUMNS=['date', 'time', 'sym', 'SeqNo', 'FeedSequenceId', 'FeedCaptureTS',
+             'LastTradeTime',
+             'LastTradePrice', 'LastTradeSize', 'HighPrice',
+             'LowPrice', 'Volume',
+             'LastTradeSequence', 'TranDateTime',
+             'AskQty1', 'AskPrice1',
+             'AskQty2', 'AskPrice2',
+             'AskQty3', 'AskPrice3',
+             'AskQty4', 'AskPrice4',
+             'AskQty5', 'AskPrice5',
+             'BidQty1', 'BidPrice1',
+             'BidQty2', 'BidPrice2',
+             'BidQty3', 'BidPrice3',
+             'BidQty4', 'BidPrice4',
+             'BidQty5', 'BidPrice5',
+]
+
+DATE_FIELDS = {'TS': ['date', 'time'], 'CaptureTS': ['date', 'FeedCaptureTS']},
+# mydatetime will contain my_date and my_time separated by a single space
+DATE_FORMAT = {'TS': '%Y-%m-%d %H:%M:%S.%f'}
 
 TIME_FMT='%H:%M:%S.%f'
 DATETIME_FMT='%Y-%m-%d %H:%M:%S.%f'
