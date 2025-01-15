@@ -54,6 +54,7 @@ EXF_DATA = dict(
     end_date = (2008,9,1),
     depth_pq_scan = [],             # computed from date tups
     depth_pq_fmt = 'depth%Y%m%d.parquet',
+    instruments = ['FGBMU8', 'FGBMZ8', 'FGBXZ8', 'FGBSU8', 'FGBSZ8', 'FGBXU8', 'FGBLU8', 'FGBLZ8'],
 )
 
 # data_change_actions should be pure cache data manipulation
@@ -62,6 +63,8 @@ parquet_list_func = functools.partial(nd_utils.file_list, nd_consts.PQ_DIR, '*.p
 # list of functions or cache refs to eval
 # element 0 is the data cache destination
 # element 1 is real func and 2...N the params
+
+# TODO: how will we handle instrument selection?
 date_change_action = [
     'depth_pq_scan',
     nd_utils.date_ranged_matches,   # provides val for parquet_scan

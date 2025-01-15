@@ -27,7 +27,7 @@ def date_ranged_matches(file_list, start_date_tup, end_date_tup, fmt, max_delta=
     return matches
 
 
-def init_logging(log_name, debug=False):
+def init_logging(log_name, debug=False, console=False):
     # tornado logs to stdout by default - we want it in a file in the %TEMP% dir
     log_file_name = f'{log_name}_{os.getpid()}.log'
     log_file_path = os.path.join(os.environ.get('TEMP'), log_file_name)
@@ -37,11 +37,12 @@ def init_logging(log_name, debug=False):
     logger = logging.getLogger(log_name)
     logger.setLevel(log_level)
     # create console and file handlers
-    # console_handler = logging.StreamHandler()
-    # console_handler.setLevel(log_level)
     file_handler = logging.FileHandler(log_file_path)
     file_handler.setLevel(log_level)
-    # logger.addHandler(console_handler)
+    if console:
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(log_level)
+        logger.addHandler(console_handler)
     logger.addHandler(file_handler)
     return logger
 
