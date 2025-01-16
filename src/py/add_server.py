@@ -36,25 +36,28 @@ ADDITION_DATA = dict(
     op1_plus_op2=5,
 )
 
-addition_func = lambda x, y: x+y
+is_addition_change = lambda c: c.get('cache_key') in ['op1', 'op2']
 
-# list of functions or cache refs to eval
-# element 0 is the real func and 1...N the params
-op_change_action = ['op1_plus_op2', addition_func, 'op1', 'op2']
-# methods to fire on cache changes
-ADDITION_ACTIONS = dict(
-    op1=op_change_action,
-    op2=op_change_action,
-)
+
 class AdditionApp(nd_web.NDAPIApp):
     def __init__(self):
         super().__init__()
         self.cache = dict(
             layout=ADDITION_LAYOUT,
             data=ADDITION_DATA,
-            config=dict(),
-            action=ADDITION_ACTIONS,
         )
+
+    def on_client_data_changes(self, change_list):
+        # Have selected_instrument, start_date or end_date changed?
+        # If so wewe need to send a fresh parquet_scan up to the client
+        add_data_changes = [c for c in change_list if is_addition_change(c)]
+        if add_data_changes:
+            ckey = 'op1_plus_op2'
+            data_cache = self.cache['data']
+            new_val = data_cache['op1'] + data_cache['op2']
+            change = dict(nd_type='DataChange', old_value=data_cache[ckey], new_value=new_val, cache_key=ckey)
+            data_cache[ckey] = new_val
+            return [change]
 
 define("port", default=8090, help="run on the given port", type=int)
 
@@ -62,6 +65,7 @@ async def main():
     parse_command_line()
     app = AdditionApp()
     app.listen(options.port)
+    logr.info(f'{__file__} port:{options.port}')
     await asyncio.Event().wait()
 
 

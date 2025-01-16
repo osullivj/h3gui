@@ -151,28 +151,6 @@ class NDAPIApp( tornado.web.Application):
         conf_dict = msg_dict.copy()
         conf_dict['nd_type'] = 'DataChangeConfirmed'
         changes.append(conf_dict)
-        # check for update actions
-        action_cache = self.cache.get('action')
-        if not action_cache:
-            return changes
-        # copy so we don't drain the orig cache copy
-        action_list = action_cache.get(ckey, []).copy()
-        if not action_list:
-            return changes
-        # fire update actions
-        data_cache_target = action_list.pop(0)
-        old_val = data_cache.get(data_cache_target)
-        primary_func = action_list.pop(0)
-        params = []
-        for action in action_list:
-            if isinstance(action, str): # not a func, a cache ref
-                params.append(data_cache.get(action))
-            else:
-                params.append(action())
-        new_val = primary_func(*params)
-        data_cache[data_cache_target] = new_val
-        # send server side data changes back to client
-        changes.append(dict(new_value=new_val, old_value=old_val, cache_key=data_cache_target, nd_type='DataChange'))
         return changes
 
     def on_duck_op(self, ws, msg_dict):
@@ -190,9 +168,15 @@ class NDAPIApp( tornado.web.Application):
         msg_dict = mdict if isinstance(mdict, dict) else dict()
         ws_func = self.ws_handlers.get(msg_dict.get('nd_type'), self.ws_no_op)
         change_list = ws_func(websock, msg_dict)
+        assert isinstance(change_list, list)
+        # change_list may not be all data changes: eg possibly nd_type='DuckOpUUID'
+        data_change_list = [c for c in change_list if nd_utils.is_data_change(c)]
+        if data_change_list:
+            change_list += self.on_client_data_changes(data_change_list)
         # no mutations or actions on changed cache entries, just send em
         # back up to the client...
-        if change_list:
-            for change in change_list:
-                websock.write_message(change)
+        for change in change_list:
+            websock.write_message(change)
+
+    def on_client_data_changes(self, change_list):
         return change_list

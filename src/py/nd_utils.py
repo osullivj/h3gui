@@ -10,7 +10,9 @@ one_day = timedelta(1)
 file_list = lambda source_dir, pattern:[fname for fname in os.listdir(source_dir)
                                         if fnmatch.fnmatch(fname, pattern)]
 
-def date_ranged_matches(file_list, start_date_tup, end_date_tup, fmt, max_delta=12):
+is_data_change = lambda c: c.get('nd_type')=='DataChangeConfirmed'
+
+def date_ranged_file_name_matches(file_list, start_date_tup, end_date_tup, fmt, max_delta=12):
     matches = []
     # YMD tuples are in the right order for a *args list unpack
     sdate = datetime(*start_date_tup)
