@@ -79,6 +79,13 @@ EXF_LAYOUT = [
             dict(rname='Footer', cspec=dict()),
         ],
     ),
+    dict(
+        rname='DuckTableSummaryModal',
+        cspec=dict(
+            title='Depth table',
+            cname='db_summary_depth',
+        ),
+    ),
 ]
 
 # Note the use of cache_keys here so we can expand with PQ_SCAN_SQL % self.cache['data']
@@ -92,6 +99,8 @@ EXF_DATA = dict(
     instruments = ('FGBMU8', 'FGBMZ8', 'FGBXZ8', 'FGBSU8', 'FGBSZ8', 'FGBXU8', 'FGBLU8', 'FGBLZ8'),
     selected_instrument = 0,
     scan_sql = PQ_SCAN_SQL % dict(scan_query_id='depth', scan_urls=[]),
+    # empty placeholder: see main.ts:on_duck_event for hardwiring of db_summary_ prefix
+    db_summary_depth = dict(),
 )
 
 # nd_utils.file_list needs one more arg after this partial bind for the pattern we're matching
@@ -133,7 +142,7 @@ class DepthApp(nd_web.NDAPIApp):
             # convert filenames to PQ URLs
             depth_urls = [f'https://localhost/api/parquet/{pqfile}' for pqfile in ranged_matches]
             old_val = data_cache['scan_sql']
-            new_val = PQ_SCAN_SQL % dict(table='depth', urls=depth_urls)
+            new_val = PQ_SCAN_SQL % dict(scan_query_id='depth', scan_urls=depth_urls)
             # finally, return the extra changes to be processed by the client
             return [dict(nd_type='DataChange', cache_key='scan_sql', old_value=old_val, new_value=new_val)]
 
