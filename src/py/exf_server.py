@@ -67,6 +67,10 @@ EXF_LAYOUT = [
                 rname='Button',
                 cspec=dict(
                     text="Scan",
+                    # next three fields align with {nd_type:"ParquetScan, sql:"...", query_id:".."}
+                    action='ParquetScan',
+                    sql='scan_sql',
+                    query_id='scan_query_id',
                 ),
             ),
             dict(rname='SameLine'),
@@ -74,12 +78,15 @@ EXF_LAYOUT = [
                 rname='Button',
                 cspec=dict(
                     text="Summary",
+                    action="depth_summary_modal",
                 ),
             ),
             dict(rname='Footer', cspec=dict()),
         ],
     ),
+    # not a Home child? Must have an ID to be pushable
     dict(
+        widget_id='depth_summary_modal',
         rname='DuckTableSummaryModal',
         cspec=dict(
             title='Depth table',
@@ -88,7 +95,6 @@ EXF_LAYOUT = [
     ),
 ]
 
-# Note the use of cache_keys here so we can expand with PQ_SCAN_SQL % self.cache['data']
 PQ_SCAN_SQL = 'BEGIN; DROP TABLE IF EXISTS %(scan_query_id)s; CREATE TABLE %(scan_query_id)s as select * from parquet_scan(%(scan_urls)s); COMMIT;'
 
 EXF_DATA = dict(
@@ -99,6 +105,8 @@ EXF_DATA = dict(
     instruments = ('FGBMU8', 'FGBMZ8', 'FGBXZ8', 'FGBSU8', 'FGBSZ8', 'FGBXU8', 'FGBLU8', 'FGBLZ8'),
     selected_instrument = 0,
     scan_sql = PQ_SCAN_SQL % dict(scan_query_id='depth', scan_urls=[]),
+    scan_query_id = 'depth',
+    scan_urls = [],
     # empty placeholder: see main.ts:on_duck_event for hardwiring of db_summary_ prefix
     db_summary_depth = dict(),
 )
@@ -140,9 +148,10 @@ class DepthApp(nd_web.NDAPIApp):
             ranged_matches = nd_utils.date_ranged_file_name_matches(instrument_specific_files,
                             data_cache['start_date'], data_cache['end_date'], f'{instrument_name}_%Y%m%d.parquet')
             # convert filenames to PQ URLs
-            depth_urls = [f'https://localhost/api/parquet/{pqfile}' for pqfile in ranged_matches]
+            data_cache['scan_urls'] = [f'https://localhost/api/parquet/{pqfile}' for pqfile in ranged_matches]
             old_val = data_cache['scan_sql']
-            new_val = PQ_SCAN_SQL % dict(scan_query_id='depth', scan_urls=depth_urls)
+            new_val = PQ_SCAN_SQL % data_cache
+            data_cache['scan_sql'] = new_val
             # finally, return the extra changes to be processed by the client
             return [dict(nd_type='DataChange', cache_key='scan_sql', old_value=old_val, new_value=new_val)]
 
