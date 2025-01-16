@@ -63,10 +63,26 @@ EXF_LAYOUT = [
                 ),
             ),
             dict(rname='Separator', cspec=dict()),
+            dict(
+                rname='Button',
+                cspec=dict(
+                    text="Scan",
+                ),
+            ),
+            dict(rname='SameLine'),
+            dict(
+                rname='Button',
+                cspec=dict(
+                    text="Summary",
+                ),
+            ),
             dict(rname='Footer', cspec=dict()),
         ],
     ),
 ]
+
+# Note the use of cache_keys here so we can expand with PQ_SCAN_SQL % self.cache['data']
+PQ_SCAN_SQL = 'BEGIN; DROP TABLE IF EXISTS %(scan_query_id)s; CREATE TABLE %(scan_query_id)s as select * from parquet_scan(%(scan_urls)s); COMMIT;'
 
 EXF_DATA = dict(
     home_title = 'FGB',
@@ -75,12 +91,12 @@ EXF_DATA = dict(
     # NB tuple gives us Array in TS, and list gives us Object
     instruments = ('FGBMU8', 'FGBMZ8', 'FGBXZ8', 'FGBSU8', 'FGBSZ8', 'FGBXU8', 'FGBLU8', 'FGBLZ8'),
     selected_instrument = 0,
+    scan_sql = PQ_SCAN_SQL % dict(scan_query_id='depth', scan_urls=[]),
 )
 
 # nd_utils.file_list needs one more arg after this partial bind for the pattern we're matching
 parquet_list_func = functools.partial(nd_utils.file_list, nd_consts.PQ_DIR, '*.parquet')
 
-PQ_SCAN_SQL = 'BEGIN; DROP TABLE IF EXISTS %(table)s; CREATE TABLE %(table)s as select * from parquet_scan(%(urls)s); COMMIT;'
 
 EXTRA_HANDLERS = [
     (r'/api/parquet/(.*)', nd_web.ParquetHandler, dict(path=os.path.join(nd_consts.ND_ROOT_DIR, 'dat')))
@@ -116,9 +132,10 @@ class DepthApp(nd_web.NDAPIApp):
                             data_cache['start_date'], data_cache['end_date'], f'{instrument_name}_%Y%m%d.parquet')
             # convert filenames to PQ URLs
             depth_urls = [f'https://localhost/api/parquet/{pqfile}' for pqfile in ranged_matches]
-            sql = PQ_SCAN_SQL % dict(table='depth', urls=depth_urls)
+            old_val = data_cache['scan_sql']
+            new_val = PQ_SCAN_SQL % dict(table='depth', urls=depth_urls)
             # finally, return the extra changes to be processed by the client
-            return [dict(nd_type='ParquetScan', sql=sql, query_id="depth")]
+            return [dict(nd_type='DataChange', cache_key='scan_sql', old_value=old_val, new_value=new_val)]
 
 
 define("port", default=443, help="run on the given port", type=int)
