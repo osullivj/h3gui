@@ -67,6 +67,7 @@ EXF_LAYOUT = [
                 rname='Button',
                 cspec=dict(
                     text="Scan",
+                    modal='parquet_loading_modal',  # push/pop while loading...
                     # next three fields align with {nd_type:"ParquetScan, sql:"...", query_id:".."}
                     action='ParquetScan',
                     sql='scan_sql',
@@ -91,6 +92,14 @@ EXF_LAYOUT = [
         cspec=dict(
             title='Depth table',
             cname='db_summary_depth',
+        ),
+    ),
+    dict(
+        widget_id='parquet_loading_modal',
+        rname='DuckParquetLoadingModal',
+        cspec=dict(
+            title='Loading parquet...',
+            cname='scan_urls',
         ),
     ),
 ]
@@ -148,12 +157,15 @@ class DepthApp(nd_web.NDAPIApp):
             ranged_matches = nd_utils.date_ranged_file_name_matches(instrument_specific_files,
                             data_cache['start_date'], data_cache['end_date'], f'{instrument_name}_%Y%m%d.parquet')
             # convert filenames to PQ URLs
-            data_cache['scan_urls'] = [f'https://localhost/api/parquet/{pqfile}' for pqfile in ranged_matches]
-            old_val = data_cache['scan_sql']
-            new_val = PQ_SCAN_SQL % data_cache
-            data_cache['scan_sql'] = new_val
+            old_urls_val = data_cache['scan_urls']
+            new_urls_val = [f'https://localhost/api/parquet/{pqfile}' for pqfile in ranged_matches]
+            data_cache['scan_urls'] = new_urls_val
+            old_sql_val = data_cache['scan_sql']
+            new_sql_val = PQ_SCAN_SQL % data_cache
+            data_cache['scan_sql'] = new_sql_val
             # finally, return the extra changes to be processed by the client
-            return [dict(nd_type='DataChange', cache_key='scan_sql', old_value=old_val, new_value=new_val)]
+            return [dict(nd_type='DataChange', cache_key='scan_sql', old_value=old_sql_val, new_value=new_sql_val),
+                    dict(nd_type='DataChange', cache_key='scan_urls', old_value=old_urls_val, new_value=new_urls_val)]
 
 
 define("port", default=443, help="run on the given port", type=int)
