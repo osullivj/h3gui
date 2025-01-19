@@ -14,9 +14,22 @@ import nd_utils
 logr = nd_utils.init_logging('pq_writer', console=True)
 
 def write_parquet(base_name, csv_in_path, target_dir):
-    table = pa_csv.read_csv(csv_in_path)
+    colnames = list(nd_consts.COLUMNS.keys())
+    # skip_rows=1 to ignore col headers as we specify the col names
+    # and types, and have autogenerate_column_names=False
+    read_options = pa_csv.ReadOptions(column_names=colnames, autogenerate_column_names=False, skip_rows=1)
+    convert_options = pa_csv.ConvertOptions(include_columns=colnames,
+                                            column_types=nd_consts.COLUMNS,
+                                     include_missing_columns=False,
+                                     strings_can_be_null=False)
+    table = pa_csv.read_csv(csv_in_path, read_options=read_options, convert_options=convert_options)
     pq_out_path = os.path.join(target_dir, f'{base_name}.parquet')
+    logr.info(f'== writing {pq_out_path}')
+    logr.info(f'columns:{table.column_names}')
+    logr.info(f'schema:{table.schema}')
     pq.write_table(table, pq_out_path)
+    metadata = pq.read_metadata(pq_out_path)
+    logr.info(f'metadata:{metadata}')
     return pq_out_path
 
 

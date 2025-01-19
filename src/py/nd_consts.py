@@ -1,4 +1,5 @@
 import os.path
+import pyarrow as pa
 
 # Env config
 CHROME_EXE = r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe'
@@ -43,25 +44,40 @@ INSTRUMENTS = {
 }
 RINSTRUMENTS=dict((v,k) for k,v in INSTRUMENTS.items())
 
-COLUMNS=['sym', 'SeqNo', 'FeedSequenceId', 'time', 'FeedCaptureTS',
-             'StatusCode', 'StatusText', 'Explicit',
-             'TradingStatus', 'InstrumentStatus', 'LastTradeTime',
-             'LastTradePrice', 'LastTradeSize', 'HighPrice',
-             'LowPrice', 'OpenPrice', 'ClosePrice', 'Volume',
-             'LastTradeSequence', 'State', 'TranDateTime',
-             'AskQty0', 'AskPrice0',
-             'AskQty1', 'AskPrice1',
-             'AskQty2', 'AskPrice2',
-             'AskQty3', 'AskPrice3',
-             'AskQty4', 'AskPrice4',
-             'AskQty5', 'AskPrice5',
-             'BidQty0', 'BidPrice0',
-             'BidQty1', 'BidPrice1',
-             'BidQty2', 'BidPrice2',
-             'BidQty3', 'BidPrice3',
-             'BidQty4', 'BidPrice4',
-             'BidQty5', 'BidPrice5',
-]
+COLUMNS=dict(
+    SeqNo=pa.int32(),
+    LastTradeTime=pa.timestamp('s'),
+    LastTradePrice=pa.float64(),
+    LastTradeSize=pa.int32(),
+    HighPrice=pa.float64(),
+    LowPrice=pa.float64(),
+    Volume=pa.int32(),
+    LastTradeSequence=pa.int32(),
+    TranDateTime=pa.timestamp('ms'),
+    BidQty1=pa.int32(),
+    AskQty1=pa.int32(),
+    BidQty2=pa.int32(),
+    AskQty2=pa.int32(),
+    BidQty3=pa.int32(),
+    AskQty3=pa.int32(),
+    BidQty4=pa.int32(),
+    AskQty4=pa.int32(),
+    BidQty5=pa.int32(),
+    AskQty5=pa.int32(),
+    BidPrice1=pa.float64(),
+    AskPrice1=pa.float64(),
+    BidPrice2=pa.float64(),
+    AskPrice2=pa.float64(),
+    BidPrice3=pa.float64(),
+    AskPrice3=pa.float64(),
+    BidPrice4=pa.float64(),
+    AskPrice4=pa.float64(),
+    BidPrice5=pa.float64(),
+    AskPrice5=pa.float64(),
+    FeedSequenceId=pa.int32(),
+    TS=pa.timestamp('ms'),
+    CaptureTS=pa.timestamp('ms'),
+)
 
 TIME_FMT='%H:%M:%S.%f'
 DATETIME_FMT='%Y-%m-%d %H:%M:%S.%f'

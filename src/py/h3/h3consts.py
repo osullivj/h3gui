@@ -1,5 +1,7 @@
 import os.path
 
+import pandas as pd
+
 # Env config
 CHROME_EXE = r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe'
 # B64_RSA_KEY was extracted from aioquic/tests/ssl_cert.pem
@@ -58,7 +60,7 @@ AGG_COLUMNS=['sym', 'SeqNo', 'FeedSequenceId', 'time', 'FeedCaptureTS',
              'BidQty5', 'BidPrice5',
 ]
 
-COLUMNS=['date', 'time', 'sym', 'SeqNo', 'FeedSequenceId', 'FeedCaptureTS',
+COLUMNS=['date', 'time', 'SeqNo', 'FeedSequenceId', 'FeedCaptureTS',
              'LastTradeTime',
              'LastTradePrice', 'LastTradeSize', 'HighPrice',
              'LowPrice', 'Volume',
@@ -74,7 +76,28 @@ COLUMNS=['date', 'time', 'sym', 'SeqNo', 'FeedSequenceId', 'FeedCaptureTS',
              'BidQty4', 'BidPrice4',
              'BidQty5', 'BidPrice5',
 ]
-
+# pandas gives us int64 by default, which becomes BIGINT in DuckDB which is unnecessary
+# for a lot of int fields like [Bid|Ask]Qty[n]
+# 16 bits would give us +=32767 or 0-65535, which should be enough. But let's go
+# with int32: DuckDB may be able to may cols contiguous...
+# NB we don't enumerate all cols here, just the ones where we override pandas defaults
+DTYPES=dict(
+    SeqNo=pd.UInt32Dtype,
+    AskQty1=pd.UInt32Dtype,
+    AskQty2=pd.UInt32Dtype,
+    AskQty3=pd.UInt32Dtype,
+    AskQty4=pd.UInt32Dtype,
+    AskQty5=pd.UInt32Dtype,
+    BidQty1=pd.UInt32Dtype,
+    BidQty2=pd.UInt32Dtype,
+    BidQty3=pd.UInt32Dtype,
+    BidQty4=pd.UInt32Dtype,
+    BidQty5=pd.UInt32Dtype,
+    FeedSequenceId=pd.UInt32Dtype,
+    LastTradeSize=pd.UInt32Dtype,
+    Volume=pd.UInt32Dtype,
+    LastTradeSequence=pd.UInt32Dtype,
+)
 DATE_FIELDS = {'TS': ['date', 'time'], 'CaptureTS': ['date', 'FeedCaptureTS']},
 # mydatetime will contain my_date and my_time separated by a single space
 DATE_FORMAT = {'TS': '%Y-%m-%d %H:%M:%S.%f'}

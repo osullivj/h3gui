@@ -16,6 +16,10 @@ class DepthData(object):
         self.target_dir = target_dir
 
     def load_data(self):
+        # various sanity testing checksums
+        column_counts = set()
+        column_names = set()
+        column_types = set()
         logging.info(f'load_data: searching {self.source_dir}')
         for fname in os.listdir(self.source_dir):
             df = None
@@ -24,7 +28,7 @@ class DepthData(object):
                 logging.info(f'load_data: processing {csv_path}')
                 # 1st pass parse lets pandas guess the data types
                 try:
-                    df = pd.read_csv(csv_path, usecols=h3consts.COLUMNS)
+                    df = pd.read_csv(csv_path, usecols=h3consts.COLUMNS, dtype=h3consts.DTYPES)
                             # parse_dates=h3consts.DATE_FIELDS, # list(h3consts.CLEAN_DATE_FORMATS.keys()),
                               #                  date_format=h3consts.DATE_FORMAT) # h3consts.CLEAN_DATE_FORMATS)
 
@@ -42,6 +46,7 @@ class DepthData(object):
                 end_ts = df['FeedCaptureTS'].max()
                 start_seq_id = df['FeedSequenceId'].min()
                 end_seq_id = df['FeedSequenceId'].max()
+                # do not need sym as it's the only varchar, and implicit in the file name
                 df = df.drop(columns=['date', 'time', 'FeedCaptureTS'])
                 df = df.sort_values(by=['FeedSequenceId'])
                 # logging.info(f'load_data: {fname} df.types\n{df.dtypes}')
@@ -55,10 +60,21 @@ class DepthData(object):
                 if inst_name:
                     ofname = f'{inst_name}_{fdate}.csv'
                     opath = os.path.join(self.target_dir, ofname)
-                    logging.info(f'load_data: writing {opath}')
-                    df.to_csv(opath)
+                    col_list = list(df.columns)
+                    col_types = [str(df[col].dtype) for col in col_list]
+                    logging.info(f'load_data: writing {opath} with {len(col_list)} columns')
+                    column_counts.add(len(col_list))
+                    column_names.add(str(col_list))
+                    column_types.add(str(col_types))
+                    # throw away all the dtype:object auxiliary stuff...
+                    logging.info(f'{dict(zip(col_list, col_types))}')
+                    # do not create an index field, use SeqNo
+                    df.to_csv(opath, index=False, index_label='SeqNo')
                 else:
                     logging.info(f'load_data: skipping {inst_code4s} {fname}')
+        logging.info(f'load_data: {len(column_counts)} column counts')
+        logging.info(f'load_data: {len(column_names)} name lists')
+        logging.info(f'load_data: {len(column_names)} type lists')
 
 
 if __name__ == '__main__':
