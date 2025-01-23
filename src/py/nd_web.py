@@ -28,6 +28,7 @@ GOOD_HTTP_ORIGINS = ['https://shell.duckdb.org', 'https://sql-workbench.com']
 CHUNK_SIZE = 2**16  # 64K chunks
 BUFFER = bytearray(CHUNK_SIZE)
 parquet_path = lambda pq_name: os.path.join(nd_consts.ND_ROOT_DIR, 'dat', pq_name)
+test_data_path = lambda test_name, slug: os.path.join(nd_consts.ND_ROOT_DIR, 'dat', 'test', test_name, f'{slug}.json')
 
 logr = nd_utils.init_logging(__name__, True)
 
@@ -78,6 +79,9 @@ class DuckJournalHandler(tornado.web.RequestHandler):
 class JSONHandler(APIHandlerBase):
     def get(self, slug):
         response_json = self.application.on_api_request(slug)
+        save_json_path = test_data_path(self.application.app_name, slug)
+        with open(save_json_path, 'wt') as jsonf:
+            jsonf.write(response_json)
         self.write(response_json)
         self.finish()
 
@@ -113,8 +117,9 @@ ND_HANDLERS = [
 ]
 
 class NDAPIApp( tornado.web.Application):
-    def __init__( self, extra_handlers = []):
+    def __init__( self, app_name, extra_handlers = []):
         # extra_handlers first so they get first crack at the match
+        self.app_name = app_name
         self.cache = dict()
         handlers = extra_handlers + ND_HANDLERS
         settings = dict(template_path=os.path.join(nd_consts.IMGUI_DIR, 'example'))

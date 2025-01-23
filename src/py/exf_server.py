@@ -12,7 +12,9 @@ import nd_web
 import nd_utils
 import nd_consts
 
-logr = nd_utils.init_logging(__name__)
+NDAPP='exf_server'
+
+logr = nd_utils.init_logging(NDAPP)
 
 EXF_LAYOUT = [
     dict(
@@ -82,6 +84,8 @@ EXF_LAYOUT = [
                     action="depth_summary_modal",
                 ),
             ),
+            dict(rname='Separator', cspec=dict()),
+            # dict(rname='Table', cspec=dict(title='Depth grid',cname='depth_results')),
             dict(rname='Footer', cspec=dict()),
         ],
     ),
@@ -105,6 +109,7 @@ EXF_LAYOUT = [
 ]
 
 PQ_SCAN_SQL = 'BEGIN; DROP TABLE IF EXISTS %(scan_query_id)s; CREATE TABLE %(scan_query_id)s as select * from parquet_scan(%(scan_urls)s); COMMIT;'
+PS_DEPTH_SQL = 'select * from depth where SeqNo > %(base_seq_no)s order by CaptureTS limit 10;'
 
 EXF_DATA = dict(
     home_title = 'FGB',
@@ -113,11 +118,16 @@ EXF_DATA = dict(
     # NB tuple gives us Array in TS, and list gives us Object
     instruments = ('FGBMU8', 'FGBMZ8', 'FGBXZ8', 'FGBSU8', 'FGBSZ8', 'FGBXU8', 'FGBLU8', 'FGBLZ8'),
     selected_instrument = 0,
+    # depth scan SQL, ID and URLs
     scan_sql = PQ_SCAN_SQL % dict(scan_query_id='depth', scan_urls=[]),
     scan_query_id = 'depth',
     scan_urls = [],
+    # depth query SQL and ID
+    depth_sql = PS_DEPTH_SQL,
     # empty placeholder: see main.ts:on_duck_event for hardwiring of db_summary_ prefix
     db_summary_depth = dict(),
+    depth_tick = dict(),
+    depth_results = [],
 )
 
 # nd_utils.file_list needs one more arg after this partial bind for the pattern we're matching
@@ -132,7 +142,7 @@ is_scan_change = lambda c: c.get('cache_key') in ['start_date', 'end_date', 'sel
 
 class DepthApp(nd_web.NDAPIApp):
     def __init__(self):
-        super().__init__(EXTRA_HANDLERS)
+        super().__init__(NDAPP, EXTRA_HANDLERS)
         self.is_duck_app = True
         self.cache = dict(
             layout=EXF_LAYOUT,

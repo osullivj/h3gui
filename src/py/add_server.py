@@ -8,6 +8,8 @@ from tornado.options import options, parse_command_line, define
 import nd_web
 import nd_utils
 
+NDAPP='add_server'
+
 logr = nd_utils.init_logging(__name__)
 
 ADDITION_LAYOUT = [
@@ -41,7 +43,7 @@ is_addition_change = lambda c: c.get('cache_key') in ['op1', 'op2']
 
 class AdditionApp(nd_web.NDAPIApp):
     def __init__(self):
-        super().__init__()
+        super().__init__(NDAPP)
         self.cache = dict(
             layout=ADDITION_LAYOUT,
             data=ADDITION_DATA,
