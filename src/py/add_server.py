@@ -40,15 +40,7 @@ ADDITION_DATA = dict(
 
 is_addition_change = lambda c: c.get('cache_key') in ['op1', 'op2']
 
-
-class AdditionApp(nd_web.NDAPIApp):
-    def __init__(self):
-        super().__init__(NDAPP)
-        self.cache = dict(
-            layout=ADDITION_LAYOUT,
-            data=ADDITION_DATA,
-        )
-
+class AdditionAppDCMixin(object):
     def on_client_data_changes(self, change_list):
         # Have selected_instrument, start_date or end_date changed?
         # If so wewe need to send a fresh parquet_scan up to the client
@@ -60,6 +52,22 @@ class AdditionApp(nd_web.NDAPIApp):
             change = dict(nd_type='DataChange', old_value=data_cache[ckey], new_value=new_val, cache_key=ckey)
             data_cache[ckey] = new_val
             return [change]
+
+class AdditionApp(nd_web.NDAPIApp, AdditionAppDCMixin):
+    def __init__(self):
+        super().__init__(NDAPP)
+        self.cache = dict(
+            layout=ADDITION_LAYOUT,
+            data=ADDITION_DATA,
+        )
+
+class AdditionLocal(nd_web.NDAPILocal, AdditionAppDCMixin):
+    def __init__(self):
+        super().__init__(NDAPP)
+        self.cache = dict(
+            layout=ADDITION_LAYOUT,
+            data=ADDITION_DATA,
+        )
 
 define("port", default=8090, help="run on the given port", type=int)
 
@@ -73,3 +81,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+else:
+    test_app = AdditionLocal()
+    __nodom__ = dict(on_client_data_changes=test_app.on_client_data_changes)
+

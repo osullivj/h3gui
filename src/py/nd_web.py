@@ -185,3 +185,10 @@ class NDAPIApp( tornado.web.Application):
 
     def on_client_data_changes(self, change_list):
         return change_list
+
+# for the C++ test bed
+class NDAPILocal(object):
+    def __init__( self, app_name):
+        # extra_handlers first so they get first crack at the match
+        self.app_name = app_name
+        self.cache = dict()

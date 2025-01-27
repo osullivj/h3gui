@@ -140,15 +140,8 @@ EXTRA_HANDLERS = [
 
 is_scan_change = lambda c: c.get('cache_key') in ['start_date', 'end_date', 'selected_instrument']
 
-class DepthApp(nd_web.NDAPIApp):
-    def __init__(self):
-        super().__init__(NDAPP, EXTRA_HANDLERS)
-        self.is_duck_app = True
-        self.cache = dict(
-            layout=EXF_LAYOUT,
-            data=EXF_DATA,
-        )
-
+class DepthAppDCMixin(object):
+    # mixin requirement: self.cache
     def on_client_data_changes(self, change_list):
         # Have selected_instrument, start_date or end_date changed?
         # If so wewe need to send a fresh parquet_scan up to the client
@@ -177,6 +170,23 @@ class DepthApp(nd_web.NDAPIApp):
             return [dict(nd_type='DataChange', cache_key='scan_sql', old_value=old_sql_val, new_value=new_sql_val),
                     dict(nd_type='DataChange', cache_key='scan_urls', old_value=old_urls_val, new_value=new_urls_val)]
 
+class DepthApp(nd_web.NDAPIApp, DepthAppDCMixin):
+    def __init__(self):
+        super().__init__(NDAPP, EXTRA_HANDLERS)
+        self.is_duck_app = True
+        self.cache = dict(
+            layout=EXF_LAYOUT,
+            data=EXF_DATA,
+        )
+
+class DepthLocal(nd_web.NDAPILocal, DepthAppDCMixin):
+    def __init__(self):
+        super().__init__(NDAPP)
+        self.is_duck_app = True
+        self.cache = dict(
+            layout=EXF_LAYOUT,
+            data=EXF_DATA,
+        )
 
 define("port", default=443, help="run on the given port", type=int)
 
@@ -195,3 +205,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+else:
+    test_app = DepthLocal()
+    __nodom__ = dict(on_client_data_changes=test_app.on_client_data_changes)
