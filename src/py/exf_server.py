@@ -140,13 +140,15 @@ EXTRA_HANDLERS = [
 
 is_scan_change = lambda c: c.get('cache_key') in ['start_date', 'end_date', 'selected_instrument']
 
-class DepthAppDCMixin(object):
-    # mixin requirement: self.cache
-    def on_client_data_changes(self, change_list):
+class DepthService(nd_utils.Service):
+    def __init__(self, app_name, layout, data):
+        super().__init__(app_name, layout, data)
+        self.is_duck_app = True
+
+    def on_client_data_change(self, client_change):
         # Have selected_instrument, start_date or end_date changed?
         # If so wewe need to send a fresh parquet_scan up to the client
-        scan_data_changes = [c for c in change_list if is_scan_change(c)]
-        if scan_data_changes:
+       if is_scan_change(client_change):
             data_cache = self.cache['data']
             # first we need the selected instrument to compose a fmt string for
             # file name date matching
@@ -170,41 +172,24 @@ class DepthAppDCMixin(object):
             return [dict(nd_type='DataChange', cache_key='scan_sql', old_value=old_sql_val, new_value=new_sql_val),
                     dict(nd_type='DataChange', cache_key='scan_urls', old_value=old_urls_val, new_value=new_urls_val)]
 
-class DepthApp(nd_web.NDAPIApp, DepthAppDCMixin):
-    def __init__(self):
-        super().__init__(NDAPP, EXTRA_HANDLERS)
-        self.is_duck_app = True
-        self.cache = dict(
-            layout=EXF_LAYOUT,
-            data=EXF_DATA,
-        )
-
-class DepthLocal(nd_web.NDAPILocal, DepthAppDCMixin):
-    def __init__(self):
-        super().__init__(NDAPP)
-        self.is_duck_app = True
-        self.cache = dict(
-            layout=EXF_LAYOUT,
-            data=EXF_DATA,
-        )
 
 define("port", default=443, help="run on the given port", type=int)
+
+# breadboard looks out for service at the module level
+service = DepthService(NDAPP, EXF_LAYOUT, EXF_DATA)
 
 async def main():
     parse_command_line()
     cert_path = os.path.normpath(os.path.join(nd_consts.ND_ROOT_DIR, 'cfg', 'h3'))
-    app = DepthApp()
+    app = nd_web.NDApp(service, EXTRA_HANDLERS)
     https_server = tornado.httpserver.HTTPServer(app, ssl_options={
         "certfile": os.path.join(cert_path, "ssl_cert.pem"),
         "keyfile": os.path.join(cert_path, "ssl_key.pem"),
     })
     https_server.listen(options.port)
-    logr.info(f'{__file__} port:{options.port} cert_path:{cert_path}')
+    logr.info(f'{NDAPP} port:{options.port} cert_path:{cert_path}')
     await asyncio.Event().wait()
 
 
 if __name__ == "__main__":
     asyncio.run(main())
-else:
-    test_app = DepthLocal()
-    __nodom__ = dict(on_client_data_changes=test_app.on_client_data_changes)
