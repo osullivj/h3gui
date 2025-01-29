@@ -1,6 +1,7 @@
 # std pkgs
 from datetime import datetime, date, timedelta
 import fnmatch
+import json
 import logging
 import os.path
 # pandas
@@ -56,5 +57,59 @@ def h3_json_encoder(obj):
     elif isinstance(obj, pd.Timestamp):
         return str(obj)
 
+# for Service diagnostic logging
+logr = init_logging(__name__)
 
+class Service(object):
+    def __init__(self, app_name, layout, data):
+        self.app_name = app_name
+        self.cache = dict(layout=layout, data=data)
+        # duck_op_dict is keyed on uuid from nd_web.WebSockHandler.open()
+        self.duck_op_dict = dict()
+        self.is_duck_app = False
 
+    def on_api_request(self, json_key):
+        return json.dumps(self.cache.get(json_key))
+
+    def on_duck_journal_request(self, client_uuid):
+        logr.info(f'on_duck_journal_request: duck_op_dict:{self.duck_op_dict}')
+        journal_entries = self.duck_op_dict.get(client_uuid, [])
+        journal_text = '\n'.join( [ j['sql'] for j in journal_entries ] )
+        logr.info(f'on_duck_#journal_request: {client_uuid} {journal_text}')
+        return journal_text
+
+    def on_no_op(self, client_uuid, msg_dict):
+        err = f'ws_no_op: client:{client_uuid} msg:{msg_dict}'
+        logr.error(err)
+        raise Exception(err)
+
+    def on_data_change(self, client_uuid, client_change):
+        # GUI has changed client cached data, so
+        # apply the change on the server side,
+        # and give app logic a chance to append
+        # further changes...
+        # First, post the new value into data cache
+        ckey = client_change["cache_key"]
+        data_cache = self.cache['data']
+        data_cache[ckey] = client_change["new_value"]
+        conf_dict = client_change.copy()
+        conf_dict['nd_type'] = 'DataChangeConfirmed'
+        server_changes = self.on_client_data_change(client_change)
+        return [conf_dict] + server_changes
+
+    def on_duck_op(self, client_uuid, msg_dict):
+        logr.info(f'on_duck_op: client:{client_uuid} {msg_dict}')
+        msg_dict['ts'] = datetime.now().isoformat()
+        op_list = self.duck_op_dict.setdefault(client_uuid, [])
+        op_list.append(msg_dict)
+        logr.info(f'on_duck_op: duck_op_dict:{self.duck_op_dict}')
+        # let the client know about the uuid for this websock
+        # so it can compose /ui/... URLs to see the duck log
+        # for diagnostics
+        return [dict(nd_type='DuckOpUUID', uuid=client_uuid)]
+
+    def on_client_data_change(self, client_change):
+        # override this method to make server side cache
+        # changes in response to client changes, and have
+        # the whole change set relayed to client...
+        return []

@@ -61,7 +61,7 @@ class HomeHandler(tornado.web.RequestHandler):
         self.set_header("Access-Control-Allow-Origin", f"*")
 
     def get(self):
-        self.render("index.html", duck_db=self.application.is_duck_app)
+        self.render("index.html", duck_db=self.application.service.is_duck_app)
 
 
 class APIHandlerBase(tornado.web.RequestHandler):
@@ -78,8 +78,8 @@ class DuckJournalHandler(tornado.web.RequestHandler):
 
 class JSONHandler(APIHandlerBase):
     def get(self, slug):
-        response_json = self.application.on_api_request(slug)
-        save_json_path = test_data_path(self.application.app_name, slug)
+        response_json = self.application.service.on_api_request(slug)
+        save_json_path = test_data_path(self.application.service.app_name, slug)
         with open(save_json_path, 'wt') as jsonf:
             jsonf.write(response_json)
         self.write(response_json)
@@ -116,75 +116,26 @@ ND_HANDLERS = [
     (r'/(.*)', StaticFileHandler, dict(path=nd_consts.ND_ROOT_DIR)),
 ]
 
-class NDAPIApp( tornado.web.Application):
-    def __init__( self, app_name, extra_handlers = []):
+class NDApp( tornado.web.Application):
+    def __init__( self, service, extra_handlers = []):
         # extra_handlers first so they get first crack at the match
-        self.app_name = app_name
-        self.cache = dict()
+        self.service = service
         handlers = extra_handlers + ND_HANDLERS
         settings = dict(template_path=os.path.join(nd_consts.IMGUI_DIR, 'example'))
         tornado.web.Application.__init__( self, handlers, **settings)
-        self.ws_handlers = dict(
-            DataChange=self.on_data_change,
-            DuckOp=self.on_duck_op,
+        self.msg_handlers = dict(
+            DataChange=service.on_data_change,
+            DuckOp=service.on_duck_op,
         )
-        # keyed on websock handler object itself
-        self.duck_op_dict = dict()
-        self.is_duck_app = False
-
-    def on_api_request(self, json_key):
-        return json.dumps(self.cache.get(json_key))
-
-    def on_duck_journal_request(self, slug):
-        logr.info(f'on_duck_journal_request: duck_op_dict:{self.duck_op_dict}')
-        journal_entries = self.duck_op_dict.get(slug, [])
-        journal_text = '\n'.join( [ j['sql'] for j in journal_entries ] )
-        logr.info(f'on_duck_journal_request: {slug} {journal_text}')
-        return journal_text
-
-    def ws_no_op(self, ws, msg_dict):
-        err = f'ws_no_op: {msg_dict['nd_type']}'
-        logr.error(err)
-        raise Exception(err)
-
-    def on_data_change(self, ws, msg_dict):
-        changes = []
-        # post the new value into data cache
-        ckey = msg_dict["cache_key"]
-        data_cache = self.cache['data']
-        data_cache[ckey] = msg_dict["new_value"]
-        conf_dict = msg_dict.copy()
-        conf_dict['nd_type'] = 'DataChangeConfirmed'
-        changes.append(conf_dict)
-        return changes
-
-    def on_duck_op(self, ws, msg_dict):
-        logr.info(f'on_duck_op: {ws._uuid} {msg_dict}')
-        msg_dict['ts'] = datetime.now().isoformat()
-        op_list = self.duck_op_dict.setdefault(ws._uuid, [])
-        op_list.append(msg_dict)
-        logr.info(f'on_duck_op: duck_op_dict:{self.duck_op_dict}')
-        # let the client know about the uuid for this websock
-        # so it can compose /ui/... URLs to see the duck log
-        # for diagnostics
-        return [dict(nd_type='DuckOpUUID', uuid=ws._uuid)]
 
     def on_ws_message(self, websock, mdict):
         msg_dict = mdict if isinstance(mdict, dict) else dict()
-        ws_func = self.ws_handlers.get(msg_dict.get('nd_type'), self.ws_no_op)
-        change_list = ws_func(websock, msg_dict)
+        handler_func = self.msg_handlers.get(msg_dict.get('nd_type'), self.service.on_no_op)
+        change_list = handler_func(websock._uuid, msg_dict)
         assert isinstance(change_list, list)
-        # change_list may not be all data changes: eg possibly nd_type='DuckOpUUID'
-        data_change_list = [c for c in change_list if nd_utils.is_data_change(c)]
-        if data_change_list:
-            change_list += self.on_client_data_changes(data_change_list)
-        # no mutations or actions on changed cache entries, just send em
-        # back up to the client...
         for change in change_list:
             websock.write_message(change)
 
-    def on_client_data_changes(self, change_list):
-        return change_list
 
 # for the C++ test bed
 class NDAPILocal(object):

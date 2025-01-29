@@ -10,7 +10,7 @@ import nd_utils
 
 NDAPP='add_server'
 
-logr = nd_utils.init_logging(__name__)
+logr = nd_utils.init_logging(NDAPP)
 
 ADDITION_LAYOUT = [
     dict(
@@ -38,50 +38,31 @@ ADDITION_DATA = dict(
     op1_plus_op2=5,
 )
 
-is_addition_change = lambda c: c.get('cache_key') in ['op1', 'op2']
+is_operand_change = lambda c: c.get('cache_key') in ['op1', 'op2']
 
-class AdditionAppDCMixin(object):
-    def on_client_data_changes(self, change_list):
-        # Have selected_instrument, start_date or end_date changed?
-        # If so wewe need to send a fresh parquet_scan up to the client
-        add_data_changes = [c for c in change_list if is_addition_change(c)]
-        if add_data_changes:
+class AdditionService(nd_utils.Service):
+    def on_client_data_change(self, client_change):
+        if is_operand_change(client_change):
+            # op1 or op2 has changed: so recalc the sum
             ckey = 'op1_plus_op2'
             data_cache = self.cache['data']
+            logr.info(f'op1:{data_cache['op1']}, op2:{data_cache['op2']}')
             new_val = data_cache['op1'] + data_cache['op2']
             change = dict(nd_type='DataChange', old_value=data_cache[ckey], new_value=new_val, cache_key=ckey)
             data_cache[ckey] = new_val
             return [change]
 
-class AdditionApp(nd_web.NDAPIApp, AdditionAppDCMixin):
-    def __init__(self):
-        super().__init__(NDAPP)
-        self.cache = dict(
-            layout=ADDITION_LAYOUT,
-            data=ADDITION_DATA,
-        )
-
-class AdditionLocal(nd_web.NDAPILocal, AdditionAppDCMixin):
-    def __init__(self):
-        super().__init__(NDAPP)
-        self.cache = dict(
-            layout=ADDITION_LAYOUT,
-            data=ADDITION_DATA,
-        )
-
 define("port", default=8090, help="run on the given port", type=int)
+
+# breadboard looks out for service at the module level
+service = AdditionService(NDAPP, ADDITION_LAYOUT, ADDITION_DATA)
 
 async def main():
     parse_command_line()
-    app = AdditionApp()
+    app = nd_web.NDApp(service)
     app.listen(options.port)
-    logr.info(f'{__file__} port:{options.port}')
+    logr.info(f'{NDAPP} port:{options.port}')
     await asyncio.Event().wait()
-
 
 if __name__ == "__main__":
     asyncio.run(main())
-else:
-    test_app = AdditionLocal()
-    __nodom__ = dict(on_client_data_changes=test_app.on_client_data_changes)
-
