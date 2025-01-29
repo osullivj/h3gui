@@ -145,7 +145,7 @@ class DepthService(nd_utils.Service):
         super().__init__(app_name, layout, data)
         self.is_duck_app = True
 
-    def on_client_data_change(self, client_change):
+    def on_client_data_change(self, uuid, client_change):
         # Have selected_instrument, start_date or end_date changed?
         # If so wewe need to send a fresh parquet_scan up to the client
        if is_scan_change(client_change):

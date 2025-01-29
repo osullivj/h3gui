@@ -89,12 +89,14 @@ class Service(object):
         # and give app logic a chance to append
         # further changes...
         # First, post the new value into data cache
+        logr.info(f'on_data_change: client_change:{client_change}')
         ckey = client_change["cache_key"]
         data_cache = self.cache['data']
         data_cache[ckey] = client_change["new_value"]
+        logr.info(f'on_data_change: data_cache:{data_cache}')
         conf_dict = client_change.copy()
         conf_dict['nd_type'] = 'DataChangeConfirmed'
-        server_changes = self.on_client_data_change(client_change)
+        server_changes = self.on_client_data_change(client_uuid, client_change)
         return [conf_dict] + server_changes
 
     def on_duck_op(self, client_uuid, msg_dict):
@@ -108,7 +110,7 @@ class Service(object):
         # for diagnostics
         return [dict(nd_type='DuckOpUUID', uuid=client_uuid)]
 
-    def on_client_data_change(self, client_change):
+    def on_client_data_change(self, client_uuid, client_change):
         # override this method to make server side cache
         # changes in response to client changes, and have
         # the whole change set relayed to client...

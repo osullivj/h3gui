@@ -10,7 +10,7 @@ import nd_utils
 
 NDAPP='add_server'
 
-logr = nd_utils.init_logging(NDAPP)
+logr = nd_utils.init_logging(NDAPP, console=True)
 
 ADDITION_LAYOUT = [
     dict(
@@ -41,11 +41,13 @@ ADDITION_DATA = dict(
 is_operand_change = lambda c: c.get('cache_key') in ['op1', 'op2']
 
 class AdditionService(nd_utils.Service):
-    def on_client_data_change(self, client_change):
+    def on_client_data_change(self, uuid, client_change):
+        logr.info(f'on_client_data_change:client:{uuid}, change:{client_change}')
         if is_operand_change(client_change):
             # op1 or op2 has changed: so recalc the sum
             ckey = 'op1_plus_op2'
             data_cache = self.cache['data']
+            logr.info(f'on_data_change: data_cache:{data_cache}')
             logr.info(f'op1:{data_cache['op1']}, op2:{data_cache['op2']}')
             new_val = data_cache['op1'] + data_cache['op2']
             change = dict(nd_type='DataChange', old_value=data_cache[ckey], new_value=new_val, cache_key=ckey)
