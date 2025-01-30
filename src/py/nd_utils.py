@@ -61,12 +61,12 @@ def h3_json_encoder(obj):
 logr = init_logging(__name__)
 
 class Service(object):
-    def __init__(self, app_name, layout, data):
+    def __init__(self, app_name, layout, data, is_duck=False):
         self.app_name = app_name
         self.cache = dict(layout=layout, data=data)
         # duck_op_dict is keyed on uuid from nd_web.WebSockHandler.open()
         self.duck_op_dict = dict()
-        self.is_duck_app = False
+        self.is_duck_app = is_duck
 
     def on_api_request(self, json_key):
         return json.dumps(self.cache.get(json_key))

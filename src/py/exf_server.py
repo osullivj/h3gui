@@ -141,14 +141,11 @@ EXTRA_HANDLERS = [
 is_scan_change = lambda c: c.get('cache_key') in ['start_date', 'end_date', 'selected_instrument']
 
 class DepthService(nd_utils.Service):
-    def __init__(self, app_name, layout, data):
-        super().__init__(app_name, layout, data)
-        self.is_duck_app = True
-
     def on_client_data_change(self, uuid, client_change):
+        logr.info(f'on_client_data_change:client:{uuid}, change:{client_change}')
         # Have selected_instrument, start_date or end_date changed?
         # If so wewe need to send a fresh parquet_scan up to the client
-       if is_scan_change(client_change):
+        if is_scan_change(client_change):
             data_cache = self.cache['data']
             # first we need the selected instrument to compose a fmt string for
             # file name date matching
@@ -176,7 +173,8 @@ class DepthService(nd_utils.Service):
 define("port", default=443, help="run on the given port", type=int)
 
 # breadboard looks out for service at the module level
-service = DepthService(NDAPP, EXF_LAYOUT, EXF_DATA)
+# NB 4th param for duck app
+service = DepthService(NDAPP, EXF_LAYOUT, EXF_DATA, True)
 
 async def main():
     parse_command_line()
