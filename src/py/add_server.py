@@ -25,7 +25,7 @@ ADDITION_LAYOUT = [
             # InputTextFlags.ReadOnly == 1 << 14 == 16384
             dict(rname='InputInt', cspec=dict(cname='op1_plus_op2', flags=16384)),
             dict(rname='Separator', cspec=dict()),
-            dict(rname='Footer', cspec=dict()),
+            dict(rname='Footer', cspec=dict(db=True, fps=True, demo=True, id_stack=True, memory=True)),
         ],
     ),
 ]
