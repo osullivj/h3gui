@@ -72,7 +72,7 @@ class APIHandlerBase(tornado.web.RequestHandler):
 class DuckJournalHandler(tornado.web.RequestHandler):
     def get(self, slug):
         self.set_header("Content-Type", "text/plain")
-        response_text = self.application.on_duck_journal_request(slug)
+        response_text = self.application.service.on_duck_journal_request(slug)
         self.write(response_text)
         self.finish()
 
