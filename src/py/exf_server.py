@@ -86,7 +86,7 @@ EXF_LAYOUT = [
             ),
             dict(rname='Separator', cspec=dict()),
             # dict(rname='Table', cspec=dict(title='Depth grid',cname='depth_results')),
-            dict(rname='Footer', cspec=dict()),
+            dict(rname='Footer', cspec=dict(db=True, fps=True, demo=True, id_stack=True, memory=True)),
         ],
     ),
     # not a Home child? Must have an ID to be pushable
