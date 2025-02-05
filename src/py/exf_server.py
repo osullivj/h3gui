@@ -85,7 +85,7 @@ EXF_LAYOUT = [
                 ),
             ),
             dict(rname='Separator', cspec=dict()),
-            # dict(rname='Table', cspec=dict(title='Depth grid',cname='depth_results')),
+            dict(rname='Table', cspec=dict(title='Depth grid',cname='depth_results')),
             dict(rname='Footer', cspec=dict(db=True, fps=True, demo=True, id_stack=True, memory=True)),
         ],
     ),
@@ -109,7 +109,7 @@ EXF_LAYOUT = [
 ]
 
 PQ_SCAN_SQL = 'BEGIN; DROP TABLE IF EXISTS %(scan_query_id)s; CREATE TABLE %(scan_query_id)s as select * from parquet_scan(%(scan_urls)s); COMMIT;'
-PS_DEPTH_SQL = 'select * from depth where SeqNo > %(base_seq_no)s order by CaptureTS limit 10;'
+PS_DEPTH_SQL = 'select * from depth where SeqNo > %(base_seq_no)s order by CaptureTS limit 10 offset %(offset)s;'
 
 EXF_DATA = dict(
     home_title = 'FGB',
@@ -127,7 +127,7 @@ EXF_DATA = dict(
     # empty placeholder: see main.ts:on_duck_event for hardwiring of db_summary_ prefix
     db_summary_depth = dict(),
     depth_tick = dict(),
-    depth_results = [],
+    depth_results = nd_consts.EMPTY_TABLE,
 )
 
 # nd_utils.file_list needs one more arg after this partial bind for the pattern we're matching

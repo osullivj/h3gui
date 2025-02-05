@@ -83,3 +83,7 @@ TIME_FMT='%H:%M:%S.%f'
 DATETIME_FMT='%Y-%m-%d %H:%M:%S.%f'
 RAW_DATE_FORMATS = dict(time=TIME_FMT, FeedCaptureTS=TIME_FMT, LastTradeTime=DATETIME_FMT, TranDateTime=DATETIME_FMT)
 CLEAN_DATE_FORMATS = dict(time=DATETIME_FMT, FeedCaptureTS=DATETIME_FMT, LastTradeTime=DATETIME_FMT, TranDateTime=DATETIME_FMT)
+
+# see main.ts:var empty_table:Materialized
+# in layout defns we need something the same "shape"
+EMPTY_TABLE=dict(names=dict(length=0), rows=dict(length=0), types=dict(length=0))
