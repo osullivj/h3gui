@@ -16,6 +16,14 @@ NDAPP='exf_server'
 
 logr = nd_utils.init_logging(NDAPP)
 
+# unique strings; single point of definition for query and button
+# IDs used in action dispatch as these are used in layout and data
+# and must be consistent. JOS 2025-02-06
+SCAN_QID='depth_scan'
+SELECT_QID='depth_query'
+SCAN_BUTTON_TEXT='Scan'
+SUMMARY_BUTTON_TEXT='Summary'
+
 EXF_LAYOUT = [
     dict(
         rname='Home',
@@ -68,20 +76,14 @@ EXF_LAYOUT = [
             dict(
                 rname='Button',
                 cspec=dict(
-                    text="Scan",
-                    modal='parquet_loading_modal',  # push/pop while loading...
-                    # next three fields align with {nd_type:"ParquetScan, sql:"...", query_id:".."}
-                    action='ParquetScan',
-                    sql='scan_sql',
-                    query_id='scan_query_id',
+                    text=SCAN_BUTTON_TEXT,
                 ),
             ),
             dict(rname='SameLine'),
             dict(
                 rname='Button',
                 cspec=dict(
-                    text="Summary",
-                    action="depth_summary_modal",
+                    text=SUMMARY_BUTTON_TEXT,
                 ),
             ),
             dict(rname='Separator', cspec=dict()),
@@ -108,7 +110,7 @@ EXF_LAYOUT = [
     ),
 ]
 
-PQ_SCAN_SQL = 'BEGIN; DROP TABLE IF EXISTS %(scan_query_id)s; CREATE TABLE %(scan_query_id)s as select * from parquet_scan(%(scan_urls)s); COMMIT;'
+PQ_SCAN_SQL = 'BEGIN; DROP TABLE IF EXISTS depth; CREATE TABLE depth as select * from parquet_scan(%(scan_urls)s); COMMIT;'
 PS_DEPTH_SQL = 'select * from depth where SeqNo > %(base_seq_no)s order by CaptureTS limit 10 offset %(offset)s;'
 
 EXF_DATA = dict(
@@ -119,8 +121,7 @@ EXF_DATA = dict(
     instruments = ('FGBMU8', 'FGBMZ8', 'FGBXZ8', 'FGBSU8', 'FGBSZ8', 'FGBXU8', 'FGBLU8', 'FGBLZ8'),
     selected_instrument = 0,
     # depth scan SQL, ID and URLs
-    scan_sql = PQ_SCAN_SQL % dict(scan_query_id='depth', scan_urls=[]),
-    scan_query_id = 'depth',
+    scan_sql = PQ_SCAN_SQL % dict(scan_urls=[]),
     scan_urls = [],
     # depth query SQL and ID
     depth_sql = PS_DEPTH_SQL,
@@ -128,6 +129,34 @@ EXF_DATA = dict(
     db_summary_depth = dict(),
     depth_tick = dict(),
     depth_results = nd_consts.EMPTY_TABLE,
+    actions = {
+        # match on scan button (SCAN_BUTTON_TEXT) click (Button)
+        SCAN_BUTTON_TEXT:dict(
+            # raise scanning modal and send scan request
+            # to duckDB when Scan
+            events=["Button"],          # fired from Scan button
+            ui="parquet_loading_modal",
+            db=dict(
+                action='ParquetScan',
+                sql_cname='scan_sql',
+                query_id=SCAN_QID,
+            ),
+        ),
+        # match on completion (ParquetScanResult) of scan query (SCAN_QID)
+        # the query will prime the depth data
+        SCAN_QID:dict(
+            events=["ParquetScanResult"],
+            db=dict(
+                action='Query',
+                sql_cname='depth_sql',
+                query_id=SELECT_QID,
+            )
+        ),
+        SUMMARY_BUTTON_TEXT:dict(
+            events=["Button"],
+            ui="depth_summary_modal",
+        )
+    }
 )
 
 # nd_utils.file_list needs one more arg after this partial bind for the pattern we're matching
