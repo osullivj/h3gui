@@ -21,6 +21,7 @@ logr = nd_utils.init_logging(NDAPP)
 # and must be consistent. JOS 2025-02-06
 SCAN_QID='depth_scan'
 SELECT_QID='depth_query'
+SUMMARY_QID='depth_summary'
 SCAN_BUTTON_TEXT='Scan'
 SUMMARY_BUTTON_TEXT='Summary'
 
@@ -110,8 +111,9 @@ EXF_LAYOUT = [
     ),
 ]
 
-PQ_SCAN_SQL = 'BEGIN; DROP TABLE IF EXISTS depth; CREATE TABLE depth as select * from parquet_scan(%(scan_urls)s); COMMIT;'
-PS_DEPTH_SQL = 'select * from depth where SeqNo > %(base_seq_no)s order by CaptureTS limit 10 offset %(offset)s;'
+SCAN_SQL = 'BEGIN; DROP TABLE IF EXISTS depth; CREATE TABLE depth as select * from parquet_scan(%(scan_urls)s); COMMIT;'
+DEPTH_SQL = 'select * from depth where SeqNo > %(base_seq_no)s order by CaptureTS limit 10 offset %(offset)s;'
+SUMMARY_SQL = 'summarize select * from depth;'
 
 EXF_DATA = dict(
     home_title = 'FGB',
@@ -121,10 +123,11 @@ EXF_DATA = dict(
     instruments = ('FGBMU8', 'FGBMZ8', 'FGBXZ8', 'FGBSU8', 'FGBSZ8', 'FGBXU8', 'FGBLU8', 'FGBLZ8'),
     selected_instrument = 0,
     # depth scan SQL, ID and URLs
-    scan_sql = PQ_SCAN_SQL % dict(scan_urls=[]),
+    scan_sql = SCAN_SQL % dict(scan_urls=[]),
     scan_urls = [],
     # depth query SQL and ID
-    depth_sql = PS_DEPTH_SQL,
+    depth_sql = DEPTH_SQL,
+    summary_sql = SUMMARY_SQL,
     # empty placeholder: see main.ts:on_duck_event for hardwiring of db_summary_ prefix
     db_summary_depth = dict(),
     depth_tick = dict(),
@@ -134,7 +137,7 @@ EXF_DATA = dict(
         SCAN_BUTTON_TEXT:dict(
             # raise scanning modal and send scan request
             # to duckDB when Scan
-            events=["Button"],          # fired from Scan button
+            nd_events=["Button"],          # fired from Scan button
             ui="parquet_loading_modal",
             db=dict(
                 action='ParquetScan',
@@ -142,10 +145,20 @@ EXF_DATA = dict(
                 query_id=SCAN_QID,
             ),
         ),
-        # match on completion (ParquetScanResult) of scan query (SCAN_QID)
-        # the query will prime the depth data
+        # match on completion (ParquetScanResult) of scan (SCAN_QID)
+        # summary of depth table
         SCAN_QID:dict(
-            events=["ParquetScanResult"],
+            nd_events=["ParquetScanResult"],
+            db=dict(
+                action='Query',
+                sql_cname='summary_sql',
+                query_id=SUMMARY_QID,
+            )
+        ),
+        # match on completion (QueryResult) of summary query (SUMMARY_QID)
+        # the query will prime the depth data
+        SUMMARY_QID:dict(
+            nd_events=["QueryResult"],
             db=dict(
                 action='Query',
                 sql_cname='depth_sql',
@@ -153,7 +166,7 @@ EXF_DATA = dict(
             )
         ),
         SUMMARY_BUTTON_TEXT:dict(
-            events=["Button"],
+            nd_events=["Button"],
             ui="depth_summary_modal",
         )
     }
