@@ -98,7 +98,7 @@ EXF_LAYOUT = [
         rname='DuckTableSummaryModal',
         cspec=dict(
             title='Depth table',
-            cname='db_summary_depth',
+            cname='depth_summary_result',
         ),
     ),
     dict(
@@ -112,7 +112,7 @@ EXF_LAYOUT = [
 ]
 
 SCAN_SQL = 'BEGIN; DROP TABLE IF EXISTS depth; CREATE TABLE depth as select * from parquet_scan(%(scan_urls)s); COMMIT;'
-DEPTH_SQL = 'select * from depth where SeqNo > %(base_seq_no)s order by CaptureTS limit 10 offset %(offset)s;'
+DEPTH_SQL = 'select * from depth where SeqNo > 0 order by CaptureTS limit 10 offset %(depth_offset)s;'
 SUMMARY_SQL = 'summarize select * from depth;'
 
 EXF_DATA = dict(
@@ -126,11 +126,12 @@ EXF_DATA = dict(
     scan_sql = SCAN_SQL % dict(scan_urls=[]),
     scan_urls = [],
     # depth query SQL and ID
-    depth_sql = DEPTH_SQL,
+    depth_sql = DEPTH_SQL % dict(depth_offset=0),
     summary_sql = SUMMARY_SQL,
     # empty placeholder: see main.ts:on_duck_event for hardwiring of db_summary_ prefix
     db_summary_depth = dict(),
     depth_tick = dict(),
+    depth_offset = 0,
     depth_results = nd_consts.EMPTY_TABLE,
     actions = {
         # match on scan button (SCAN_BUTTON_TEXT) click (Button)
@@ -138,7 +139,7 @@ EXF_DATA = dict(
             # raise scanning modal and send scan request
             # to duckDB when Scan
             nd_events=["Button"],          # fired from Scan button
-            ui="parquet_loading_modal",
+            ui_push="parquet_loading_modal",
             db=dict(
                 action='ParquetScan',
                 sql_cname='scan_sql',
@@ -149,6 +150,7 @@ EXF_DATA = dict(
         # summary of depth table
         SCAN_QID:dict(
             nd_events=["ParquetScanResult"],
+            ui_pop="DuckParquetLoadingModal",
             db=dict(
                 action='Query',
                 sql_cname='summary_sql',
@@ -167,7 +169,10 @@ EXF_DATA = dict(
         ),
         SUMMARY_BUTTON_TEXT:dict(
             nd_events=["Button"],
-            ui="depth_summary_modal",
+            # depth_summary_modal is self popping, so
+            # no need for a corresponding ui_pop like
+            # parquet_loading_modal
+            ui_push="depth_summary_modal",
         )
     }
 )
@@ -181,14 +186,15 @@ EXTRA_HANDLERS = [
 ]
 
 is_scan_change = lambda c: c.get('cache_key') in ['start_date', 'end_date', 'selected_instrument']
+is_depth_offset_change = lambda c: c.get('cache_key') == 'depth_offset'
 
 class DepthService(nd_utils.Service):
     def on_client_data_change(self, uuid, client_change):
         logr.info(f'on_client_data_change:client:{uuid}, change:{client_change}')
+        data_cache = self.cache['data']
         # Have selected_instrument, start_date or end_date changed?
-        # If so wewe need to send a fresh parquet_scan up to the client
+        # If so we need to send a fresh parquet_scan up to the client
         if is_scan_change(client_change):
-            data_cache = self.cache['data']
             # first we need the selected instrument to compose a fmt string for
             # file name date matching
             instrument_index = data_cache['selected_instrument']
@@ -205,11 +211,18 @@ class DepthService(nd_utils.Service):
             new_urls_val = [f'https://localhost/api/parquet/{pqfile}' for pqfile in ranged_matches]
             data_cache['scan_urls'] = new_urls_val
             old_sql_val = data_cache['scan_sql']
-            new_sql_val = PQ_SCAN_SQL % data_cache
+            new_sql_val = SCAN_SQL % data_cache
             data_cache['scan_sql'] = new_sql_val
             # finally, return the extra changes to be processed by the client
             return [dict(nd_type='DataChange', cache_key='scan_sql', old_value=old_sql_val, new_value=new_sql_val),
                     dict(nd_type='DataChange', cache_key='scan_urls', old_value=old_urls_val, new_value=new_urls_val)]
+        elif is_depth_offset_change(client_change):
+            # front end has hit fwd or back button, so recompose depth query
+            old_depth_sql = data_cache['depth_sql']
+            new_depth_sql = DEPTH_SQL % data_cache
+            data_cache['depth_sql'] = new_depth_sql
+            return [dict(nd_type='DataChange', cache_key='depth_sql', old_value=old_depth_sql, new_value=new_depth_sql)]
+
 
 
 define("port", default=443, help="run on the given port", type=int)
