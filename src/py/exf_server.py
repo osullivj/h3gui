@@ -88,7 +88,7 @@ EXF_LAYOUT = [
                 ),
             ),
             dict(rname='Separator', cspec=dict()),
-            dict(rname='Table', cspec=dict(title='Depth grid',cname='depth_results')),
+            dict(rname='Table', cspec=dict(title='Depth grid',cname='depth_query_result')),
             dict(rname='Footer', cspec=dict(db=True, fps=True, demo=True, id_stack=True, memory=True)),
         ],
     ),
@@ -160,6 +160,7 @@ EXF_DATA = dict(
         # match on completion (QueryResult) of summary query (SUMMARY_QID)
         # the query will prime the depth data
         SUMMARY_QID:dict(
+        # "disable":dict(
             nd_events=["QueryResult"],
             db=dict(
                 action='Query',
