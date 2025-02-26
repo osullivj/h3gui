@@ -68,6 +68,12 @@ class Service(object):
         self.duck_op_dict = dict()
         self.is_duck_app = is_duck
 
+    def on_ws_open(self, ws):
+        pass
+
+    def on_ws_close(self, ws):
+        pass
+
     def on_api_request(self, json_key):
         return json.dumps(self.cache.get(json_key))
 

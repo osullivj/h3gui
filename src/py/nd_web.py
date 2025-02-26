@@ -93,13 +93,16 @@ class WebSockHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         self._uuid = str(uuid.uuid4())
         logr.info(f'WebSockHandler.open: {self._uuid}')
+        self.application.on_ws_open(self)
 
     def on_close(self):
         logr.info(f'WebSockHandler.on_close: {self._uuid}')
+        self.application.on_ws_close(self)
 
     def on_message(self, msg):
         logr.info(f'on_message: {self._uuid} IN {msg}')
         msg_dict = json.loads(msg)
+        msg_dict['uuid'] = self._uuid
         self.application.on_ws_message(self, msg_dict)
 
 
@@ -128,6 +131,14 @@ class NDApp( tornado.web.Application):
             DuckOp=service.on_duck_op,
         )
 
+    def on_ws_open(self, websock):
+        logr.info(f'NDApp.on_ws_open: {websock._uuid}')
+        self.service.on_ws_open(websock)
+
+    def on_ws_close(self, websock):
+        logr.info(f'NDApp.on_ws_close: {websock._uuid}')
+        self.service.on_ws_close(websock)
+
     def on_ws_message(self, websock, mdict):
         msg_dict = mdict if isinstance(mdict, dict) else dict()
         handler_func = self.msg_handlers.get(msg_dict.get('nd_type'), self.service.on_no_op)
@@ -135,11 +146,3 @@ class NDApp( tornado.web.Application):
         assert isinstance(change_list, list)
         for change in change_list:
             websock.write_message(change)
-
-
-# for the C++ test bed
-class NDAPILocal(object):
-    def __init__( self, app_name):
-        # extra_handlers first so they get first crack at the match
-        self.app_name = app_name
-        self.cache = dict()

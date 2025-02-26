@@ -7,6 +7,7 @@ import tornado
 import tornado.websocket
 from tornado.options import define, options, parse_command_line
 from tornado.web import StaticFileHandler
+import duckdb
 # nodom
 import nd_consts
 import nd_web
@@ -31,12 +32,22 @@ class DuckService(nd_utils.Service):
             ParquetScan=self.on_scan,
             Query=self.on_query,
         )
+        # in mem DB instance: NB duckdb_wasm doesn't persist
+        self.duck_conn = duckdb.connect()
+        self.websocks = dict()
 
-    def on_scan(self, sql):
-        pass
+    def on_ws_open(self, websock):
+        self.websocks[websock._uuid] = websock
+        # send DuckInstance to notify GUI DB exists
+        websock.write_message(dict(nd_type="DuckInstance"))
 
-    def on_query(self, sql):
-        pass
+    def on_scan(self, uuid, msg_dict):
+        # parquet scans do not produce a result set
+        # ergo diff handler...
+        self.duck_conn.sql(msg_dict["sql"])
+
+    def on_query(self, uuid, msg_dict):
+        self.duck_conn.sql(msg_dict["sql"])
 
 
 service = DuckService()
