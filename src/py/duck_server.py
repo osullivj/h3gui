@@ -54,19 +54,31 @@ class DuckService(nd_utils.Service):
             Query=self.on_query,
         )
 
+    def send_duck_instance(self, uuid):
+        logr.info(f'DuckService.send_duck_instance: {uuid}')
+        websock = self.websocks.get(uuid)
+        if websock:
+            websock.write_message(dict(nd_type='DuckIns'
+                                               'tance', uuid=uuid))
+        else:
+            logr.error(f'DuckService.send_duck_instance: bad uuid {uuid}')
+
     def on_data_change_nullop(self):
         logr.info(f'DuckService.null')
 
     def on_ws_open(self, websock):
         self.websocks[websock._uuid] = websock
-        # send DuckInstance to notify GUI DB exists
-        websock.write_message(dict(nd_type="DuckInstance"))
+        tornado.ioloop.IOLoop.current().add_callback(self.send_duck_instance, websock._uuid)
 
     def on_scan(self, uuid, msg_dict):
         # parquet scans do not produce a result set
         # ergo diff handler...
         logr.info(f'on_scan: {uuid} {msg_dict}')
-        self.duck_conn.sql(msg_dict["sql"])
+        try:
+            self.duck_conn.execute(msg_dict["sql"])
+        except duckdb.IOException as ex:
+            logr.error(f'DuckService.on_scan: {ex}')
+        logr.info(f'on_scan: complete')
         return [dict(nd_type='ParquetScanResult', query_id=msg_dict['query_id'])]
 
     def on_query(self, uuid, msg_dict):
