@@ -27,14 +27,35 @@ class DuckService(nd_utils.Service):
         # overwrite the default msg_handlers set in base
         # as we don't need DataChange and DuckOp here; those
         # handlers are for a "real" backend serving a nodom
-        # duck browser process
+        # duck browser process. In this case we're replacing
+        # the browser hosted DB with server hosted. Note also that
+        # we're not supplying a DataChange handler, as breadboard
+        # routes that to its in process DataChange handler.
         self.msg_handlers = dict(
             ParquetScan=self.on_scan,
             Query=self.on_query,
+            DuckOp=self.on_duck_op,
         )
         # in mem DB instance: NB duckdb_wasm doesn't persist
         self.duck_conn = duckdb.connect()
         self.websocks = dict()
+
+    def get_ws_handlers(self):
+        # nd_utils.Service.get_ws_handlers gives us DataChange and DuckOp
+        # that's appropriate for a "real" backend like add_server or
+        # exf_server: they have to handle DataChange in the server side
+        # cache, and they want to log DB ops for diagnostics. We'll impl
+        # DuckOp too, but give DataChange a nullop as we're running with
+        # breadboard which handles DataChange via NDServer pybind11 dispatch
+        return dict(
+            DuckOp=self.on_duck_op,
+            DataChange=self.on_data_change_nullop,
+            ParquetScan=self.on_scan,
+            Query=self.on_query,
+        )
+
+    def on_data_change_nullop(self):
+        logr.info(f'DuckService.null')
 
     def on_ws_open(self, websock):
         self.websocks[websock._uuid] = websock
@@ -44,10 +65,15 @@ class DuckService(nd_utils.Service):
     def on_scan(self, uuid, msg_dict):
         # parquet scans do not produce a result set
         # ergo diff handler...
+        logr.info(f'on_scan: {uuid} {msg_dict}')
         self.duck_conn.sql(msg_dict["sql"])
+        return [dict(nd_type='ParquetScanResult', query_id=msg_dict['query_id'])]
 
     def on_query(self, uuid, msg_dict):
-        self.duck_conn.sql(msg_dict["sql"])
+        logr.info(f'on_query: {uuid} {msg_dict}')
+        rs = self.duck_conn.execute(msg_dict["sql"])
+        logr.info(f'on_query: {rs}')
+        return [dict(nd_type='QueryResult', query_id=msg_dict['query_id'])]
 
 
 service = DuckService()

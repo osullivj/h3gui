@@ -68,16 +68,30 @@ class Service(object):
         self.duck_op_dict = dict()
         self.is_duck_app = is_duck
 
+    def get_ws_handlers(self):
+        # override in app specific subclasses to handle
+        # more or different websock messages from the client
+        return dict(
+            DataChange=self.on_data_change,
+            DuckOp=self.on_duck_op,
+        )
+
     def on_ws_open(self, ws):
+        # invoked by NDApp.on_ws_open: override for
+        # websock event notification
         pass
 
     def on_ws_close(self, ws):
+        # invoked by NDApp.on_ws_open: override for
+        # websock event notification
         pass
 
     def on_api_request(self, json_key):
+        # invoked by JSONHandler: used to get layout or data
         return json.dumps(self.cache.get(json_key))
 
     def on_duck_journal_request(self, client_uuid):
+        # invoked by DuckJournalHandler: used to log DB ops
         logr.info(f'on_duck_journal_request: duck_op_dict:{self.duck_op_dict}')
         journal_entries = self.duck_op_dict.get(client_uuid, [])
         journal_text = '\n'.join( [ j['sql'] for j in journal_entries ] )
@@ -85,15 +99,17 @@ class Service(object):
         return journal_text
 
     def on_no_op(self, client_uuid, msg_dict):
+        # invoked by NSApp.on_ws_message on nd_type lookup fail
         err = f'ws_no_op: client:{client_uuid} msg:{msg_dict}'
         logr.error(err)
         raise Exception(err)
 
     def on_data_change(self, client_uuid, client_change):
-        # GUI has changed client cached data, so
-        # apply the change on the server side,
-        # and give app logic a chance to append
-        # further changes...
+        # Invoked by NSApp.on_ws_message on nd_type:DataChange
+        # "default" WS handler for client notifications to server
+        # App specific subclasses should override on_client_data_change
+        # if they want to supply server side changes in response to the client
+        # Or they could supply their own on_data_change
         # First, post the new value into data cache
         logr.info(f'on_data_change: client_change:{client_change}')
         ckey = client_change["cache_key"]
@@ -102,10 +118,12 @@ class Service(object):
         logr.info(f'on_data_change: data_cache:{data_cache}')
         conf_dict = client_change.copy()
         conf_dict['nd_type'] = 'DataChangeConfirmed'
+        # Does a subclass want to add server side changes?
         server_changes = self.on_client_data_change(client_uuid, client_change)
         return [conf_dict] + server_changes
 
     def on_duck_op(self, client_uuid, msg_dict):
+        # Invoked by NSApp.on_ws_message on nd_type:DuckOp
         logr.info(f'on_duck_op: client:{client_uuid} {msg_dict}')
         msg_dict['ts'] = datetime.now().isoformat()
         op_list = self.duck_op_dict.setdefault(client_uuid, [])

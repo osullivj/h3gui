@@ -100,7 +100,7 @@ class WebSockHandler(tornado.websocket.WebSocketHandler):
         self.application.on_ws_close(self)
 
     def on_message(self, msg):
-        logr.info(f'on_message: {self._uuid} IN {msg}')
+        logr.info(f'WebSockHandler.on_message: {self._uuid} IN {msg}')
         msg_dict = json.loads(msg)
         msg_dict['uuid'] = self._uuid
         self.application.on_ws_message(self, msg_dict)
@@ -126,10 +126,7 @@ class NDApp( tornado.web.Application):
         handlers = extra_handlers + ND_HANDLERS
         settings = dict(template_path=os.path.join(nd_consts.IMGUI_DIR, 'example'))
         tornado.web.Application.__init__( self, handlers, **settings)
-        self.msg_handlers = dict(
-            DataChange=service.on_data_change,
-            DuckOp=service.on_duck_op,
-        )
+        self.ws_handlers = service.get_ws_handlers()
 
     def on_ws_open(self, websock):
         logr.info(f'NDApp.on_ws_open: {websock._uuid}')
@@ -140,8 +137,9 @@ class NDApp( tornado.web.Application):
         self.service.on_ws_close(websock)
 
     def on_ws_message(self, websock, mdict):
+        logr.info(f'NDApp.on_ws_message: {websock._uuid} {mdict}')
         msg_dict = mdict if isinstance(mdict, dict) else dict()
-        handler_func = self.msg_handlers.get(msg_dict.get('nd_type'), self.service.on_no_op)
+        handler_func = self.ws_handlers.get(msg_dict.get('nd_type'), self.service.on_no_op)
         change_list = handler_func(websock._uuid, msg_dict)
         assert isinstance(change_list, list)
         for change in change_list:
