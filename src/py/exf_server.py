@@ -225,7 +225,7 @@ class DepthService(nd_utils.Service):
             return [dict(nd_type='DataChange', cache_key='depth_sql', old_value=old_depth_sql, new_value=new_depth_sql)]
 
 
-
+# for security reasons duck only ingests parquet via 443
 define("port", default=443, help="run on the given port", type=int)
 
 # breadboard looks out for service at the module level
