@@ -83,7 +83,11 @@ class DuckService(nd_utils.Service):
 
     def on_query(self, uuid, msg_dict):
         logr.info(f'on_query: {uuid} {msg_dict}')
-        rs = self.duck_conn.execute(msg_dict["sql"])
+        # PyArrow may not be the most efficient way to
+        # handle results. But we have to use arrow with
+        # duckdb-wasm, and breadboard is a test bed, so
+        # arrow it is. JOS 2025-02-28
+        arrow_table = self.duck_conn.sql(msg_dict["sql"])
         logr.info(f'on_query: {rs}')
         return [dict(nd_type='QueryResult', query_id=msg_dict['query_id'])]
 
