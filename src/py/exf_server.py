@@ -65,6 +65,7 @@ EXF_LAYOUT = [
                 rname='DatePicker',
                 cspec=dict(
                     cname='end_date',
+                    table_flags=0,
                 ),
             ),
             dict(rname='SameLine'),
