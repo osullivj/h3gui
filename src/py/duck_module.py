@@ -54,15 +54,15 @@ class DuckService(object):
         logr.info(f'scan: {response}')
         return response
 
-    def query(self, uuid, msg_dict):
-        logr.info(f'on_query: {uuid} {msg_dict}')
+    def query(self, msg_dict):
+        logr.info(f'on_query: {msg_dict}')
         # PyArrow may not be the most efficient way to
         # handle results. But we have to use arrow with
         # duckdb-wasm, and breadboard is a test bed, so
         # arrow it is. JOS 2025-02-28
         arrow_table = self.duck_conn.sql(msg_dict["sql"])
-        response = [dict(nd_type='QueryResult', query_id=msg_dict['query_id'],
-                         result=arrow_table)]
+        response = [dict(nd_type='QueryResult', query_id=msg_dict['query_id'])]
+        # cpp object: result=arrow_table)]
         logr.info(f'on_query: {response}')
         return response
 
