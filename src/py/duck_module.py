@@ -1,11 +1,13 @@
 # std pkgs
 import logging
 import os.path
-import duckdb
 # nodom
 import nd_consts
 import nd_web
 import nd_utils
+# 3rd pty
+import duckdb
+import pyarrow  # imported for breadboard C++ access
 
 # duck_module.py: yes, it's named after duck_module.js
 # breadboard's pybind11 code loads this module so that
@@ -61,8 +63,8 @@ class DuckService(object):
         # duckdb-wasm, and breadboard is a test bed, so
         # arrow it is. JOS 2025-02-28
         arrow_table = self.duck_conn.sql(msg_dict["sql"])
-        response = [dict(nd_type='QueryResult', query_id=msg_dict['query_id'])]
-        # cpp object: result=arrow_table)]
+        response = [dict(nd_type='QueryResult', query_id=msg_dict['query_id'],
+                        result=arrow_table.to_arrow_table())]
         logr.info(f'on_query: {response}')
         return response
 
