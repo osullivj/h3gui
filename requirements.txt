@@ -9,3 +9,4 @@ service-identity
 pyOpenSSL
 pylsqpack
 pyarrow
+pandas
