@@ -33,7 +33,7 @@ def date_ranged_file_name_matches(file_list, start_date_tup, end_date_tup, fmt, 
 def init_logging(log_name, debug=False, console=False):
     # tornado logs to stdout by default - we want it in a file in the %TEMP% dir
     log_file_name = f'{log_name}_{os.getpid()}.log'
-    log_file_path = os.path.join(os.environ.get('TEMP'), log_file_name)
+    log_file_path = os.path.join(os.environ.get('TEMP') or r'./', log_file_name)
     # create our logger object
     # NB others create their own eg "tornado.access"
     log_level = logging.DEBUG if debug else logging.INFO

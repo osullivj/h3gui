@@ -1,10 +1,15 @@
 import os.path
 import pyarrow as pa
+import sys
 
-# Env config
-CHROME_EXE = r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe'
 # B64_RSA_KEY was extracted from aioquic/tests/ssl_cert.pem
 B64_RSA_KEY = 'BSQJ0jkQ7wwhR7KvPZ+DSNk2XTZ/MS6xCbo9qu++VdQ='
+
+# Env config
+if sys.platform == 'linux':
+    CHROME_EXE = r'/opt/google/chrome/chrome'
+else:
+    CHROME_EXE = r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe'
 
 # Notes on Chrome launch flags...
 # https://peter.sh/experiments/chromium-command-line-switches/
@@ -20,15 +25,20 @@ CHROME_LAUNCH_FMT = (
     '--ignore-certificate-errors-spki-list=%(b64_rsa_key)s '
     # https://medium.com/@aleksej.gudkov/understanding-and-fixing-the-strict-origin-when-cross-origin-cors-error-340c6614f701
     #   '--disable-web-security '
-    'https://localhost/example/index.html'
+    # Python Tornado based servers on 8090, npm on 8080
+    'https://localhost:8090/example/index.html'
 )
 
 CHROME_LAUNCH_DICT = dict(exe=CHROME_EXE, user_data_dir='', b64_rsa_key=B64_RSA_KEY)
 
 ND_ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 # generic data dir outside this project
-EXT_DATA_SRC_DIR = 'c:\\osullivj\\dat\\depth'
-IMGUI_DIR = 'c:\\osullivj\\src\\imgui-jswt'
+if sys.platform == 'linux':
+    EXT_DATA_SRC_DIR = 'c:\\osullivj\\dat\\depth'
+    IMGUI_DIR = '/home/jos/src/imgui-jswt'
+else:
+    EXT_DATA_SRC_DIR = 'c:\\osullivj\\dat\\depth'
+    IMGUI_DIR = 'c:\\osullivj\\src\\imgui-jswt'
 PQ_DIR = os.path.normpath(os.path.join(ND_ROOT_DIR, 'dat'))
 
 # Data config
