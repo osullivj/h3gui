@@ -13,12 +13,10 @@ NDAPP='add_server'
 logr = nd_utils.init_logging(NDAPP, console=True)
 
 ADDITION_LAYOUT = [
-    dict(
-        rname='Home',
-        cspec=dict(
-            title='Server side addition',
-        ),
+    dict(rname="Home",
+        cspec=dict(title='Server side addition', font='Arial'),
         children=[
+            dict(rname="PushFont", cspec=dict(font='Courier')),
             dict(rname='InputInt', cspec=dict(cname='op1', step=1)),
             dict(rname='InputInt', cspec=dict(cname='op2', step=2)),
             # see src/imgui.ts for enum defns
@@ -26,6 +24,7 @@ ADDITION_LAYOUT = [
             dict(rname='InputInt', cspec=dict(cname='op1_plus_op2', flags=16384)),
             dict(rname='Separator', cspec=dict()),
             dict(rname='Footer', cspec=dict(db=True, fps=True, demo=True, id_stack=True, memory=True)),
+            dict(rname='PopFont'),
         ],
     ),
 ]
