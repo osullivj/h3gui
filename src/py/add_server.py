@@ -17,6 +17,7 @@ ADDITION_LAYOUT = [
         rname='Home',
         cspec=dict(
             title='Server side addition',
+            font='Arial',
         ),
         children=[
             dict(rname='InputInt', cspec=dict(cname='op1', step=1)),
